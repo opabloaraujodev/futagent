@@ -1,0 +1,9 @@
+{
+  "initial_balance": 10000.0,
+  "balance": 10000.0,
+  "real_wallet_balance": null,
+  "max_simultaneous_trades": 5,
+  "positions": [],
+  "closed_positions": [],
+  "history": []
+}

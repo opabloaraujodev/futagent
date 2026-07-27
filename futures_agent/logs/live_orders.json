@@ -1,0 +1,20 @@
+[
+  {
+    "order_id": "1084367215392",
+    "symbol": "BTCUSDT",
+    "side": "BUY",
+    "type": "MARKET",
+    "price": 65324.7,
+    "quantity": 0.001,
+    "status": "NEW",
+    "mode": "LIVE",
+    "timestamp": "2026-07-26 20:39:20",
+    "leverage": 10,
+    "margin_type": "ISOLATED",
+    "position_sizing_type": "PERCENT",
+    "position_size_value": null,
+    "sl_price": null,
+    "tp_price": null,
+    "notes": "Ordem executada via CLI live"
+  }
+]

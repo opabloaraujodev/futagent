@@ -1,0 +1,6 @@
+{
+  "name": "Agente Binance Futures",
+  "description": "Agente multiassímbolo de análise técnica, backtest, otimização, paper trading e IA Ollama para Binance Futures USDⓈ-M",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
