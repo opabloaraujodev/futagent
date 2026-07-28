@@ -137,8 +137,20 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
       }
 
       const resp = await fetch(url);
+      const contentType = resp.headers.get('content-type') || '';
+      if (!resp.ok || !contentType.includes('application/json')) {
+        const text = await resp.text();
+        let errorMsg = `Erro ${resp.status} do servidor`;
+        try {
+          const jsonErr = JSON.parse(text);
+          if (jsonErr.error) errorMsg = jsonErr.error;
+        } catch {}
+        console.warn('Scan indisponível temporariamente:', errorMsg);
+        return;
+      }
+
       const data = await resp.json();
-      if (data.success) {
+      if (data && data.success) {
         setResults(data.data || []);
         setLastUpdated(new Date().toLocaleTimeString('pt-BR'));
       }

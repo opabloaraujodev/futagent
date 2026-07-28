@@ -28,6 +28,10 @@ export const CliTerminalTab: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ args: cmdToRun }),
       });
+      if (!resp.ok || !(resp.headers.get('content-type') || '').includes('application/json')) {
+        setLogs((prev) => [...prev, `Erro HTTP (${resp.status}): ${resp.statusText}`]);
+        return;
+      }
       const data = await resp.json();
       const output = data.stdout || data.stderr || 'Sem saída de terminal.';
       setLogs((prev) => [...prev, output]);

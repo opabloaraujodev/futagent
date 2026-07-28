@@ -37,6 +37,10 @@ export const OllamaConfigTab: React.FC<OllamaConfigTabProps> = ({ ollamaStatus, 
           args: `scan --symbols BTCUSDT --rsi-low 35 --all --with-ollama --model "${testModel}" --json`,
         }),
       });
+      if (!resp.ok || !(resp.headers.get('content-type') || '').includes('application/json')) {
+        setTestResponse(`Erro HTTP (${resp.status}): ${resp.statusText}`);
+        return;
+      }
       const data = await resp.json();
       setTestResponse(data.stdout || data.stderr || 'Sem resposta');
     } catch (err: any) {

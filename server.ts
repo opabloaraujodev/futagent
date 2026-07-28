@@ -15,7 +15,7 @@ app.use(express.json());
 async function runAgentCli(commandArgs: string): Promise<{ stdout: string; stderr: string }> {
   const cmd = `python3 -m futures_agent.main ${commandArgs}`;
   try {
-    const { stdout, stderr } = await execAsync(cmd, { cwd: process.cwd() });
+    const { stdout, stderr } = await execAsync(cmd, { cwd: process.cwd(), maxBuffer: 50 * 1024 * 1024 });
     return { stdout, stderr };
   } catch (error: any) {
     return {
@@ -58,20 +58,11 @@ app.get("/api/price", async (req, res) => {
   try {
     const symbol = ((req.query.symbol as string) || "BTCUSDT").toUpperCase();
     const cmd = `python3 -c "from futures_agent.binance_client import BinanceFuturesClient; import json; print(json.dumps({'symbol': '${symbol}', 'price': BinanceFuturesClient().get_current_price('${symbol}')}))"`;
-    const { exec } = require("child_process");
-    exec(cmd, { cwd: process.cwd() }, (err: any, stdout: string) => {
-      if (err) {
-        return res.json({ success: false, price: 63800.0, symbol });
-      }
-      try {
-        const parsed = JSON.parse(stdout.trim());
-        res.json({ success: true, ...parsed });
-      } catch {
-        res.json({ success: false, price: 63800.0, symbol });
-      }
-    });
+    const { stdout } = await execAsync(cmd, { cwd: process.cwd() });
+    const parsed = JSON.parse(stdout.trim());
+    res.json({ success: true, ...parsed });
   } catch (error: any) {
-    res.json({ success: false, price: 63800.0, error: error.message });
+    res.json({ success: false, price: 63800.0, symbol: (req.query.symbol as string) || "BTCUSDT", error: error.message });
   }
 });
 
@@ -464,6 +455,11 @@ app.get("/api/download-zip", async (req, res) => {
 
 // Start Express and Vite dev/prod server
 async function startServer() {
+  // Safe 404 fallback for API routes to prevent Vite HTML fallback on missing/errored API endpoints
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ success: false, error: `Endpoint de API não encontrado: ${req.method} ${req.path}` });
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

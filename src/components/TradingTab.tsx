@@ -71,8 +71,9 @@ export const TradingTab: React.FC<TradingTabProps> = ({
     setFetchingSymbolPrice(true);
     try {
       const resp = await fetch(`/api/price?symbol=${targetSymbol}`);
+      if (!resp.ok || !(resp.headers.get('content-type') || '').includes('application/json')) return;
       const data = await resp.json();
-      if (data.price) {
+      if (data && data.price) {
         setLiveSymbolPrice(data.price);
       }
     } catch (e) {
@@ -117,8 +118,9 @@ export const TradingTab: React.FC<TradingTabProps> = ({
   const fetchPaperStatus = async () => {
     try {
       const resp = await fetch('/api/trade/status');
+      if (!resp.ok || !(resp.headers.get('content-type') || '').includes('application/json')) return;
       const data = await resp.json();
-      if (data.success) {
+      if (data && data.success) {
         setPaperState(data.data);
       }
     } catch (e) {

@@ -32,6 +32,7 @@ export const PineGeneratorTab: React.FC<PineGeneratorTabProps> = ({ ollamaModels
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, model }),
       });
+      if (!resp.ok || !(resp.headers.get('content-type') || '').includes('application/json')) return;
       const data = await resp.json();
       if (data.success) {
         setGeneratedPine(data.data.pine_code || '');

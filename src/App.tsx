@@ -55,8 +55,9 @@ export default function App() {
   const fetchOllamaStatus = async () => {
     try {
       const resp = await fetch('/api/ollama/status');
+      if (!resp.ok || !(resp.headers.get('content-type') || '').includes('application/json')) return;
       const data = await resp.json();
-      if (data.success) {
+      if (data && data.success) {
         setOllamaStatus(data.data);
       }
     } catch (e) {

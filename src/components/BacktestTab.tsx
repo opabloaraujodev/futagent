@@ -171,6 +171,18 @@ export const BacktestTab: React.FC<BacktestTabProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bodyPayload),
       });
+      const contentType = resp.headers.get('content-type') || '';
+      if (!resp.ok || !contentType.includes('application/json')) {
+        const text = await resp.text();
+        let msg = `Erro (${resp.status}) ao executar backtest.`;
+        try {
+          const jsonErr = JSON.parse(text);
+          if (jsonErr.error) msg = jsonErr.error;
+        } catch {}
+        setResult(null);
+        setErrorMessage(msg);
+        return;
+      }
       const data = await resp.json();
       if (data.success && data.data && !data.data.error) {
         setResult(data.data);

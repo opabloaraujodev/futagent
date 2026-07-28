@@ -12,9 +12,12 @@ export const SettingsTab: React.FC<{ onSettingsUpdated?: () => void }> = ({ onSe
   useEffect(() => {
     // Tenta carregar do servidor se existir
     fetch('/api/settings')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok || !(res.headers.get('content-type') || '').includes('application/json')) return null;
+        return res.json();
+      })
       .then((data) => {
-        if (data.success && data.data) {
+        if (data && data.success && data.data) {
           setSettings((prev) => ({ ...prev, ...data.data }));
         }
       })
