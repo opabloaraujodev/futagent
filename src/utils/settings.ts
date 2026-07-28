@@ -1,6 +1,8 @@
 import { GlobalSettings } from '../types';
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
+  binance_api_key: '',
+  binance_secret_key: '',
   margin_type: 'ISOLATED',
   position_sizing_type: 'PERCENT',
   position_size_value: 10.0,

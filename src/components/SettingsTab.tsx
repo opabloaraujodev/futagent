@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { GlobalSettings } from '../types';
 import { loadGlobalSettings, saveGlobalSettings } from '../utils/settings';
-import { Sliders, Save, CheckCircle2, Shield, DollarSign, Folder, Zap, RefreshCw, Lock, Sparkles } from 'lucide-react';
+import { Sliders, Save, CheckCircle2, Shield, DollarSign, Folder, Zap, RefreshCw, Lock, Sparkles, Key, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export const SettingsTab: React.FC<{ onSettingsUpdated?: () => void }> = ({ onSettingsUpdated }) => {
   const [settings, setSettings] = useState<GlobalSettings>(loadGlobalSettings());
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
 
   useEffect(() => {
     // Tenta carregar do servidor se existir
@@ -105,6 +106,79 @@ export const SettingsTab: React.FC<{ onSettingsUpdated?: () => void }> = ({ onSe
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* BLOCO 0: CHAVES DE API BINANCE FUTURES */}
+        <div className="lg:col-span-2 bg-zinc-950 border border-indigo-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
+          <div className="flex items-center justify-between pb-3 border-b border-white/10">
+            <div className="flex items-center gap-2.5">
+              <Key className="w-4 h-4 text-amber-400" />
+              <h3 className="text-xs font-bold font-mono text-white tracking-wider uppercase">
+                Credenciais de API Binance Futures (USDⓈ-M Live)
+              </h3>
+            </div>
+            <span
+              className={`text-[10px] font-mono px-2.5 py-1 rounded font-bold uppercase tracking-wider ${
+                settings.binance_api_key && settings.binance_secret_key
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              }`}
+            >
+              {settings.binance_api_key && settings.binance_secret_key
+                ? 'CHAVES SALVAS'
+                : 'CHAVES NÃO CONFIGURADAS'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[11px] text-slate-300 font-mono font-semibold block mb-1.5 flex items-center justify-between">
+                <span>API Key (Binance Futures)</span>
+                <span className="text-[10px] text-slate-500 font-normal">Futuros / Leitura e Leitura de Saldo</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Insira sua API Key da Binance..."
+                  value={settings.binance_api_key || ''}
+                  onChange={(e) => handleChange('binance_api_key', e.target.value)}
+                  className="w-full bg-black/60 border border-white/15 text-slate-200 rounded-xl p-2.5 pr-8 text-xs font-mono focus:outline-none focus:border-amber-500 font-semibold"
+                />
+                <Key className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-3" />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] text-slate-300 font-mono font-semibold block mb-1.5 flex items-center justify-between">
+                <span>Secret Key (Binance Futures)</span>
+                <button
+                  type="button"
+                  onClick={() => setShowSecret(!showSecret)}
+                  className="text-[10px] text-indigo-400 hover:text-indigo-300 font-normal cursor-pointer flex items-center gap-1"
+                >
+                  {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  <span>{showSecret ? 'Ocultar' : 'Mostrar'}</span>
+                </button>
+              </label>
+              <div className="relative">
+                <input
+                  type={showSecret ? 'text' : 'password'}
+                  placeholder="Insira sua Secret Key da Binance..."
+                  value={settings.binance_secret_key || ''}
+                  onChange={(e) => handleChange('binance_secret_key', e.target.value)}
+                  className="w-full bg-black/60 border border-white/15 text-slate-200 rounded-xl p-2.5 pr-8 text-xs font-mono focus:outline-none focus:border-amber-500 font-semibold"
+                />
+                <Lock className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-3" />
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-400 font-mono flex items-start gap-1.5 bg-white/5 p-3 rounded-xl border border-white/5">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <span>
+              <strong>Importante para o Modo Live:</strong> Suas chaves são persistidas localmente no seu ambiente e usadas pelo agente backend exclusivamente para consultar o saldo real em USDT da carteira de Futuros e enviar ordens em modo Live quando confirmado por você. Verifique se a chave possui permissão para <strong>Enable Futures</strong> na sua conta Binance.
+            </span>
+          </p>
+        </div>
+
         {/* BLOCO 1: MODO DE MARGEM, CAPITAL & ALAVANCAGEM */}
         <div className="bg-zinc-950 border border-white/10 rounded-2xl p-5 space-y-4 shadow-md">
           <div className="flex items-center gap-2.5 pb-3 border-b border-white/5">

@@ -9,6 +9,9 @@ from typing import List, Dict, Any, Optional
 from futures_agent.config import BINANCE_FUTURES_URL, BINANCE_API_KEY, BINANCE_SECRET_KEY
 from futures_agent.models import Candle
 
+import os
+from pathlib import Path
+
 class BinanceFuturesClient:
     def __init__(self, api_key: str = "", secret_key: str = ""):
         self.api_key = api_key or BINANCE_API_KEY
@@ -20,6 +23,30 @@ class BinanceFuturesClient:
             "https://api.binance.com",
             "https://api1.binance.com"
         ]
+        self._reload_keys_from_settings()
+
+    def _reload_keys_from_settings(self):
+        """Atualiza dinamicamente as chaves de API a partir do arquivo .env ou global_settings.json"""
+        env_key = os.getenv("BINANCE_API_KEY", "")
+        env_secret = os.getenv("BINANCE_SECRET_KEY", "")
+        if env_key and env_secret:
+            self.api_key = env_key
+            self.secret_key = env_secret
+            return
+
+        settings_path = Path("global_settings.json")
+        if settings_path.exists():
+            try:
+                with open(settings_path, "r", encoding="utf-8") as f:
+                    st = json.load(f)
+                    file_key = st.get("binance_api_key") or st.get("api_key") or ""
+                    file_secret = st.get("binance_secret_key") or st.get("secret_key") or ""
+                    if file_key:
+                        self.api_key = file_key
+                    if file_secret:
+                        self.secret_key = file_secret
+            except Exception:
+                pass
 
     def _request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]] = None, signed: bool = False, retries: int = 3) -> Any:
         params = params or {}
@@ -28,6 +55,9 @@ class BinanceFuturesClient:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
         
+        if signed:
+            self._reload_keys_from_settings()
+
         if self.api_key:
             headers["X-MBX-APIKEY"] = self.api_key
 
@@ -117,6 +147,7 @@ class BinanceFuturesClient:
 
     def get_futures_balance(self) -> Optional[float]:
         """Obtém o saldo real em USDT da carteira de Futuros Binance"""
+        self._reload_keys_from_settings()
         if not self.api_key or not self.secret_key:
             return None
         try:
@@ -124,8 +155,10 @@ class BinanceFuturesClient:
             if isinstance(res, list):
                 for item in res:
                     if item.get("asset") == "USDT":
-                        return float(item.get("balance") or item.get("crossWalletBalance") or 0.0)
-        except Exception:
+                        val = item.get("balance") or item.get("crossWalletBalance") or item.get("availableBalance") or 0.0
+                        return float(val)
+        except Exception as e:
+            print("Erro ao obter saldo de Futuros da Binance:", e)
             pass
         return None
 

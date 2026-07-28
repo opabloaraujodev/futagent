@@ -133,14 +133,19 @@ class OrderManager:
         init_bal = state.get("initial_balance", 10000.0)
         bal = state.get("balance", 10000.0)
         max_trades = state.get("max_simultaneous_trades", 3)
+
         # Tentar buscar o saldo real da carteira Binance se chaves API estiverem configuradas
         real_bal_api = self.client.get_futures_balance()
+        api_connected = False
+        api_has_keys = bool(self.client.api_key and self.client.secret_key)
+
         if real_bal_api is not None:
             real_wallet = real_bal_api
             state["real_wallet_balance"] = real_wallet
             self._save_paper_state(state)
+            api_connected = True
         else:
-            real_wallet = state.get("real_wallet_balance", 1250.0)
+            real_wallet = state.get("real_wallet_balance", 0.0)
 
         # Atualizar preços e PnL não realizado de posições abertas
         open_positions = state.get("positions", [])
@@ -184,6 +189,8 @@ class OrderManager:
             "initial_balance": round(init_bal, 2),
             "balance": round(bal, 2),
             "real_wallet_balance": round(real_wallet, 2),
+            "api_connected": api_connected,
+            "api_has_keys": api_has_keys,
             "equity": round(equity, 2),
             "pnl_usdt": round(pnl_usdt_total, 2),
             "pnl_pct": round(pnl_pct_total, 2),

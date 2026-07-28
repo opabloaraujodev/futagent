@@ -193,6 +193,8 @@ export interface PaperState {
   initial_balance: number;
   balance: number;
   real_wallet_balance?: number;
+  api_connected?: boolean;
+  api_has_keys?: boolean;
   equity: number;
   pnl_usdt: number;
   pnl_pct: number;
@@ -211,6 +213,8 @@ export interface OllamaStatus {
 }
 
 export interface GlobalSettings {
+  binance_api_key?: string;
+  binance_secret_key?: string;
   margin_type: 'ISOLATED' | 'CROSS';
   position_sizing_type: 'PERCENT' | 'FIXED';
   position_size_value: number;

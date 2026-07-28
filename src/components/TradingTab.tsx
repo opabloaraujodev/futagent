@@ -17,7 +17,9 @@ import {
   DollarSign,
   TrendingUp,
   TrendingDown,
-  Sliders
+  Sliders,
+  Key,
+  AlertCircle
 } from 'lucide-react';
 
 interface TradingTabProps {
@@ -206,31 +208,76 @@ export const TradingTab: React.FC<TradingTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Banner de Aviso de API no Modo Live */}
+      {tradingMode === 'live' && !paperState.api_connected && (
+        <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-200 font-mono text-xs shadow-lg animate-fade-in">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+            <div>
+              <span className="font-bold text-amber-300">Modo Live Selecionado sem API Conectada:</span>
+              <p className="text-[11px] text-amber-200/80 font-normal mt-0.5">
+                Insira sua API Key e Secret Key da Binance Futures na aba Configurações para carregar o saldo real atualizado da sua carteira e liberar execuções em tempo real.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              window.location.hash = '#settings';
+            }}
+            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span>Configurar Chaves API</span>
+          </button>
+        </div>
+      )}
+
       {/* Cards de Métricas e Saldos (4 Colunas) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Saldo Inicial & Carteira Real */}
+        {/* Card 1: Saldo Ativo & Carteira Real */}
         <div className="bg-zinc-900/50 border border-white/10 rounded-xl p-4 shadow-xl flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-slate-400 block uppercase tracking-wider">Saldo Inicial & Carteira</span>
-            <button
-              onClick={handleResetPaper}
-              className="text-[9px] font-mono font-bold bg-white/5 hover:bg-white/10 text-slate-300 px-2 py-0.5 rounded border border-white/10 cursor-pointer transition-all"
-              title="Resetar banca simulada para $10.000"
-            >
-              RESETAR
-            </button>
+            <span className="text-[10px] font-mono text-slate-400 block uppercase tracking-wider">
+              {tradingMode === 'live' ? 'Saldo Binance Futures (Live)' : 'Saldo Virtual (Paper)'}
+            </span>
+            {tradingMode === 'paper' ? (
+              <button
+                onClick={handleResetPaper}
+                className="text-[9px] font-mono font-bold bg-white/5 hover:bg-white/10 text-slate-300 px-2 py-0.5 rounded border border-white/10 cursor-pointer transition-all"
+                title="Resetar banca simulada para $10.000"
+              >
+                RESETAR
+              </button>
+            ) : (
+              <span className={`flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                paperState.api_connected
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${paperState.api_connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                {paperState.api_connected ? 'API CONECTADA' : 'SEM API'}
+              </span>
+            )}
           </div>
           <div>
             <div className="flex items-baseline justify-between">
-              <span className="text-xs text-slate-400 font-mono">Virtual (Paper):</span>
-              <span className="text-base font-mono font-bold text-white">
-                ${paperState.initial_balance?.toFixed(2)}
+              <span className="text-xs text-slate-400 font-mono">
+                {tradingMode === 'live' ? 'Carteira Real:' : 'Banca Simulado:'}
+              </span>
+              <span className={`text-lg font-mono font-bold ${tradingMode === 'live' ? 'text-emerald-400' : 'text-white'}`}>
+                ${tradingMode === 'live'
+                  ? (paperState.real_wallet_balance ?? 0.0).toFixed(2)
+                  : (paperState.balance ?? paperState.initial_balance ?? 10000).toFixed(2)} USDT
               </span>
             </div>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="text-xs text-slate-400 font-mono">Binance Real:</span>
-              <span className="text-sm font-mono font-bold text-emerald-400">
-                ${paperState.real_wallet_balance?.toFixed(2)} USDT
+            <div className="flex items-baseline justify-between mt-1 pt-1 border-t border-white/5">
+              <span className="text-[10px] text-slate-500 font-mono">
+                {tradingMode === 'live' ? 'Simulado (Paper):' : 'Binance Real:'}
+              </span>
+              <span className="text-xs font-mono font-medium text-slate-400">
+                ${tradingMode === 'live'
+                  ? (paperState.balance ?? 10000).toFixed(2)
+                  : (paperState.real_wallet_balance ?? 0.0).toFixed(2)} USDT
               </span>
             </div>
           </div>
