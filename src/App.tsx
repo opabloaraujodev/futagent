@@ -17,7 +17,24 @@ import { StrategyParams, OllamaStatus } from './types';
 import { Search, BarChart2, Sliders, Wallet, FileCode, Cpu, Terminal, ShieldCheck, Activity, Download, Settings } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'scan' | 'backtest' | 'optimize' | 'trade' | 'pine' | 'ollama' | 'cli' | 'settings'>('scan');
+  const [activeTab, setActiveTab] = useState<'scan' | 'backtest' | 'optimize' | 'trade' | 'pine' | 'ollama' | 'cli' | 'settings'>(() => {
+    // Tenta recuperar do hash da URL primeiro (ex: #backtest) ou do localStorage
+    const hash = window.location.hash.replace('#', '');
+    const validTabs = ['scan', 'backtest', 'optimize', 'trade', 'pine', 'ollama', 'cli', 'settings'];
+    if (hash && validTabs.includes(hash)) {
+      return hash as any;
+    }
+    const saved = localStorage.getItem('futagent_active_tab');
+    if (saved && validTabs.includes(saved)) {
+      return saved as any;
+    }
+    return 'scan';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('futagent_active_tab', activeTab);
+    window.location.hash = activeTab;
+  }, [activeTab]);
   const [executionMode, setExecutionMode] = useState<'paper' | 'live'>('paper');
 
   // Compartilhamento de Estado entre abas
