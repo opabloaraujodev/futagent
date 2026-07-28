@@ -18,12 +18,7 @@ import { Search, BarChart2, Sliders, Wallet, FileCode, Cpu, Terminal, ShieldChec
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'scan' | 'backtest' | 'optimize' | 'trade' | 'pine' | 'ollama' | 'cli' | 'settings'>(() => {
-    // Tenta recuperar do hash da URL primeiro (ex: #backtest) ou do localStorage
-    const hash = window.location.hash.replace('#', '');
     const validTabs = ['scan', 'backtest', 'optimize', 'trade', 'pine', 'ollama', 'cli', 'settings'];
-    if (hash && validTabs.includes(hash)) {
-      return hash as any;
-    }
     const saved = localStorage.getItem('futagent_active_tab');
     if (saved && validTabs.includes(saved)) {
       return saved as any;
@@ -33,7 +28,6 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('futagent_active_tab', activeTab);
-    window.location.hash = activeTab;
   }, [activeTab]);
   const [executionMode, setExecutionMode] = useState<'paper' | 'live'>('paper');
 
@@ -284,6 +278,7 @@ export default function App() {
                 initialSl={tradeParams?.sl || 64000}
                 initialTp={tradeParams?.tp || 67000}
                 onTradingModeChange={setExecutionMode}
+                onNavigateToSettings={() => setActiveTab('settings')}
               />
             )}
 

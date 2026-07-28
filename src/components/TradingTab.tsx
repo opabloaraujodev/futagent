@@ -29,6 +29,7 @@ interface TradingTabProps {
   initialSl?: number;
   initialTp?: number;
   onTradingModeChange?: (mode: 'paper' | 'live') => void;
+  onNavigateToSettings?: () => void;
 }
 
 export const TradingTab: React.FC<TradingTabProps> = ({
@@ -38,6 +39,7 @@ export const TradingTab: React.FC<TradingTabProps> = ({
   initialSl = 64000,
   initialTp = 67000,
   onTradingModeChange,
+  onNavigateToSettings,
 }) => {
   const globalDefaults = loadGlobalSettings();
 
@@ -222,7 +224,9 @@ export const TradingTab: React.FC<TradingTabProps> = ({
           </div>
           <button
             onClick={() => {
-              window.location.hash = '#settings';
+              if (onNavigateToSettings) {
+                onNavigateToSettings();
+              }
             }}
             className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5"
           >
