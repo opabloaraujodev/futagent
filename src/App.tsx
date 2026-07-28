@@ -13,6 +13,7 @@ import { OllamaConfigTab } from './components/OllamaConfigTab';
 import { CliTerminalTab } from './components/CliTerminalTab';
 import { SettingsTab } from './components/SettingsTab';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { SyncTimerWidget } from './components/SyncTimerWidget';
 import { StrategyParams, OllamaStatus } from './types';
 import { Search, BarChart2, Sliders, Wallet, FileCode, Cpu, Terminal, ShieldCheck, Activity, Download, Settings } from 'lucide-react';
 
@@ -102,6 +103,8 @@ export default function App() {
 
             {/* Badges de Status do Sistema */}
             <div className="flex flex-wrap items-center gap-3">
+              <SyncTimerWidget timeframe="15m" refreshInterval={5} compact />
+
               <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded border border-white/10">
                 <span className="text-[10px] text-slate-500 font-mono">BINANCE API:</span>
                 <span className="text-[10px] text-emerald-400 font-mono font-semibold">CONNECTED</span>

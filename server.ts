@@ -180,13 +180,13 @@ app.post("/api/backtest", async (req, res) => {
     }
     cmd += " --json";
 
-    const { stdout } = await runAgentCli(cmd);
+    const { stdout, stderr } = await runAgentCli(cmd);
 
     const parsed = parseJsonFromStdout(stdout);
     if (!parsed) {
       return res.json({
         success: false,
-        error: "Falha ao ler os dados do backtest. Verifique se o diretório de dados locais ou arquivos JSON existem para este par/timeframe.",
+        error: stderr || stdout || "Falha ao processar o resultado do backtest.",
         raw: stdout,
       });
     }

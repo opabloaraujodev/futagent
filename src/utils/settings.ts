@@ -17,6 +17,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   capital: 10000,
   leverage: 10,
   auto_refresh_interval: 5,
+  timeframe: '15m',
 };
 
 const STORAGE_KEY = 'binance_futures_agent_global_settings_v1';

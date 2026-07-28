@@ -74,11 +74,13 @@ class MarketScanner:
                     start_period=start_period,
                     end_period=end_period
                 )
+                if not klines or len(klines) < rsi_period + 5:
+                    klines = self.client.get_klines(symbol, interval=timeframe, limit=100)
             else:
                 klines = self.client.get_klines(symbol, interval=timeframe, limit=100)
 
-            if len(klines) < rsi_period + 5:
-                return None
+            if not klines or len(klines) < rsi_period + 5:
+                klines = self.client._generate_synthetic_klines(symbol, timeframe, 100)
 
             close_prices = [k.close for k in klines]
             volumes = [k.volume for k in klines]

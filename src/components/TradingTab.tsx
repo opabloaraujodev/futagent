@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PaperState, Order, Position, ClosedPosition } from '../types';
 import { loadGlobalSettings } from '../utils/settings';
+import { SyncTimerWidget } from './SyncTimerWidget';
 import {
   Wallet,
   ShieldAlert,
@@ -52,6 +53,7 @@ export const TradingTab: React.FC<TradingTabProps> = ({
 
   // Form State
   const [symbol, setSymbol] = useState(initialSymbol);
+  const [timeframe, setTimeframe] = useState<string>(globalDefaults.timeframe || '15m');
   const [side, setSide] = useState<'BUY' | 'SELL'>(initialSide);
   const [quantity, setQuantity] = useState(0.01);
   const [leverage, setLeverage] = useState(globalDefaults.leverage || 10);
@@ -130,13 +132,19 @@ export const TradingTab: React.FC<TradingTabProps> = ({
 
   useEffect(() => {
     fetchPaperStatus();
+    if (symbol) {
+      fetchCurrentSymbolPrice(symbol);
+    }
     if (refreshInterval > 0) {
       const timer = setInterval(() => {
         fetchPaperStatus();
+        if (symbol) {
+          fetchCurrentSymbolPrice(symbol);
+        }
       }, Math.max(1000, refreshInterval * 1000));
       return () => clearInterval(timer);
     }
-  }, [refreshInterval]);
+  }, [refreshInterval, symbol]);
 
   const handleModeChange = (mode: 'paper' | 'live') => {
     setTradingMode(mode);
@@ -269,6 +277,19 @@ export const TradingTab: React.FC<TradingTabProps> = ({
           </button>
         </div>
       )}
+
+      {/* Widget de Contagem Regressiva e Sincronização Temporizada de Velas/Preço */}
+      <SyncTimerWidget
+        timeframe={timeframe || '15m'}
+        refreshInterval={refreshInterval}
+        onCandleCloseTrigger={fetchPaperStatus}
+        onPriceTickTrigger={() => {
+          fetchPaperStatus();
+          if (symbol) {
+            fetchCurrentSymbolPrice(symbol);
+          }
+        }}
+      />
 
       {/* Cards de Métricas e Saldos (4 Colunas) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

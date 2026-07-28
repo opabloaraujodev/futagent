@@ -229,4 +229,5 @@ export interface GlobalSettings {
   capital: number;
   leverage: number;
   auto_refresh_interval: number;
+  timeframe?: string;
 }

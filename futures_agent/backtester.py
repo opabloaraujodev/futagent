@@ -182,8 +182,17 @@ class Backtester:
                 start_period=start_period,
                 end_period=end_period
             )
+            if not klines or len(klines) < 30:
+                import sys
+                print(f"⚠️ [Backtester] Dados locais não encontrados/insuficientes em '{data_dir}' para {symbol} ({timeframe}). Buscando via API...", file=sys.stderr)
+                klines = self.client.get_klines(symbol=symbol, interval=timeframe, limit=limit)
         else:
             klines = self.client.get_klines(symbol=symbol, interval=timeframe, limit=limit)
+
+        if not klines or len(klines) < 30:
+            import sys
+            print(f"⚠️ [Backtester] Klines insuficientes. Gerando klines sintéticas para simulação...", file=sys.stderr)
+            klines = self.client._generate_synthetic_klines(symbol=symbol, interval=timeframe, limit=limit or 500)
 
         params_dict = {
             "strategy": strat_mode,

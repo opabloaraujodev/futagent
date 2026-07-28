@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ScanResult, StrategyParams } from '../types';
 import { loadGlobalSettings } from '../utils/settings';
 import { Search, Flame, TrendingUp, TrendingDown, AlertCircle, Cpu, Play, RefreshCw, X, FolderCheck, HardDrive, Plus, Trash2 } from 'lucide-react';
+import { SyncTimerWidget } from './SyncTimerWidget';
 
 interface ScannerTabProps {
   onQuickTrade: (symbol: string, side: 'BUY' | 'SELL', price: number, sl: number, tp: number) => void;
@@ -218,63 +219,32 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
     }
   };
 
-  // Reset do timer quando o intervalo ou símbolos mudam
-  useEffect(() => {
-    setCountdown(autoRefreshInterval);
-  }, [autoRefreshInterval]);
+  const handleCandleCloseTrigger = useCallback(() => {
+    runScanWithSymbols(selectedSymbols);
+  }, [
+    selectedSymbols, timeframe, strategy, rsiPeriod, rsiLow, rsiHigh, volRatio,
+    donchianPeriod, cmfPeriod, cmfThreshold, emaFilter, emaFast, emaSlow,
+    bbPeriod, bbStdDev, macdFast, macdSlow, macdSignal, supertrendPeriod,
+    supertrendMultiplier, crtLookback, showAll, withOllama, selectedModel,
+    useLocalJson, dataDir, periodMode, specificPeriods, startPeriod, endPeriod
+  ]);
 
-  // Efeito de temporizador para auto-refresh
+  const handlePriceTickTrigger = useCallback(() => {
+    if (autoRefreshInterval > 0) {
+      runScanWithSymbols(selectedSymbols);
+    }
+  }, [
+    autoRefreshInterval, selectedSymbols, timeframe, strategy, rsiPeriod, rsiLow, rsiHigh, volRatio,
+    donchianPeriod, cmfPeriod, cmfThreshold, emaFilter, emaFast, emaSlow,
+    bbPeriod, bbStdDev, macdFast, macdSlow, macdSignal, supertrendPeriod,
+    supertrendMultiplier, crtLookback, showAll, withOllama, selectedModel,
+    useLocalJson, dataDir, periodMode, specificPeriods, startPeriod, endPeriod
+  ]);
+
+  // Efeito inicial para varrer quando os símbolos mudam
   useEffect(() => {
     runScanWithSymbols(selectedSymbols);
   }, [selectedSymbols]);
-
-  useEffect(() => {
-    if (autoRefreshInterval <= 0) return;
-
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          runScanWithSymbols(selectedSymbols);
-          return autoRefreshInterval;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [
-    autoRefreshInterval,
-    selectedSymbols,
-    timeframe,
-    strategy,
-    rsiPeriod,
-    rsiLow,
-    rsiHigh,
-    volRatio,
-    donchianPeriod,
-    cmfPeriod,
-    cmfThreshold,
-    emaFilter,
-    emaFast,
-    emaSlow,
-    bbPeriod,
-    bbStdDev,
-    macdFast,
-    macdSlow,
-    macdSignal,
-    supertrendPeriod,
-    supertrendMultiplier,
-    crtLookback,
-    showAll,
-    withOllama,
-    selectedModel,
-    useLocalJson,
-    dataDir,
-    periodMode,
-    specificPeriods,
-    startPeriod,
-    endPeriod
-  ]);
 
   return (
     <div className="space-y-6">
@@ -784,6 +754,15 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Painel de Sincronização Temporizada de Velas e Preços */}
+      <SyncTimerWidget
+        timeframe={timeframe}
+        refreshInterval={autoRefreshInterval}
+        onCandleCloseTrigger={handleCandleCloseTrigger}
+        onPriceTickTrigger={handlePriceTickTrigger}
+        loading={loading}
+      />
 
       {/* Resultados do Scan */}
       <div className="space-y-4">

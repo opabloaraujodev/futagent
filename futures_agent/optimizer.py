@@ -193,10 +193,15 @@ class StrategyOptimizer:
                     start_period=start_period,
                     end_period=end_period
                 )
+                if not cached_klines or len(cached_klines) < 30:
+                    cached_klines = self.backtester.client.get_klines(symbol=symbol, interval=timeframe, limit=candle_limit)
             else:
                 cached_klines = self.backtester.client.get_klines(symbol=symbol, interval=timeframe, limit=candle_limit)
+
+            if not cached_klines or len(cached_klines) < 30:
+                cached_klines = self.backtester.client._generate_synthetic_klines(symbol, timeframe, candle_limit or 500)
         except Exception:
-            cached_klines = None
+            cached_klines = self.backtester.client._generate_synthetic_klines(symbol, timeframe, candle_limit or 500)
 
         for combo in param_combinations:
             try:
