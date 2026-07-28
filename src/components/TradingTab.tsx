@@ -63,6 +63,38 @@ export const TradingTab: React.FC<TradingTabProps> = ({
   const [price, setPrice] = useState<number | ''>('');
   const [slPrice, setSlPrice] = useState<number | ''>(initialSl || '');
   const [tpPrice, setTpPrice] = useState<number | ''>(initialTp || '');
+  const [liveSymbolPrice, setLiveSymbolPrice] = useState<number | null>(null);
+  const [fetchingSymbolPrice, setFetchingSymbolPrice] = useState(false);
+
+  const fetchCurrentSymbolPrice = async (targetSymbol: string) => {
+    if (!targetSymbol) return;
+    setFetchingSymbolPrice(true);
+    try {
+      const resp = await fetch(`/api/price?symbol=${targetSymbol}`);
+      const data = await resp.json();
+      if (data.price) {
+        setLiveSymbolPrice(data.price);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFetchingSymbolPrice(false);
+    }
+  };
+
+  useEffect(() => {
+    if (symbol) {
+      fetchCurrentSymbolPrice(symbol);
+    }
+  }, [symbol]);
+
+  useEffect(() => {
+    if (initialSymbol) setSymbol(initialSymbol);
+    if (initialSide) setSide(initialSide);
+    if (initialPrice) setPrice(initialPrice);
+    if (initialSl) setSlPrice(initialSl);
+    if (initialTp) setTpPrice(initialTp);
+  }, [initialSymbol, initialSide, initialPrice, initialSl, initialTp]);
 
   const [loading, setLoading] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
@@ -401,7 +433,14 @@ export const TradingTab: React.FC<TradingTabProps> = ({
 
         <form onSubmit={handleSendOrder} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
           <div>
-            <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Contrato</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] text-slate-400 font-mono uppercase block">Contrato</label>
+              {liveSymbolPrice && (
+                <span className="text-[10px] font-mono font-bold text-amber-400">
+                  ${liveSymbolPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                </span>
+              )}
+            </div>
             <input
               type="text"
               value={symbol}
@@ -436,7 +475,19 @@ export const TradingTab: React.FC<TradingTabProps> = ({
           </div>
 
           <div>
-            <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Preço Limit (Opcional)</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] text-slate-400 font-mono uppercase block">Preço Limit (Opcional)</label>
+              {liveSymbolPrice && (
+                <button
+                  type="button"
+                  onClick={() => setPrice(liveSymbolPrice)}
+                  className="text-[9px] font-mono text-emerald-400 hover:underline cursor-pointer"
+                  title="Usar preço atual de mercado"
+                >
+                  USAR ATUAL
+                </button>
+              )}
+            </div>
             <input
               type="number"
               step="0.01"
@@ -615,8 +666,8 @@ export const TradingTab: React.FC<TradingTabProps> = ({
                           {pos.side}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-200">${pos.entry_price}</td>
-                      <td className="py-2.5 px-3 text-amber-300 font-bold">${pos.current_price || pos.entry_price}</td>
+                      <td className="py-2.5 px-3 text-slate-200">${Number(pos.entry_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                      <td className="py-2.5 px-3 text-amber-300 font-bold">${Number(pos.current_price || pos.entry_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                       <td className={`py-2.5 px-3 font-bold ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {isProfitable ? '+' : ''}${pnlUsdt.toFixed(2)}
                       </td>

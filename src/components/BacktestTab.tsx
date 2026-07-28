@@ -86,6 +86,30 @@ export const BacktestTab: React.FC<BacktestTabProps> = ({
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (initialSymbol) setSymbol(initialSymbol);
+    if (initialParams) {
+      if (initialParams.rsi_period) setRsiPeriod(initialParams.rsi_period);
+      if (initialParams.rsi_oversold) setRsiLow(initialParams.rsi_oversold);
+      if (initialParams.rsi_overbought) setRsiHigh(initialParams.rsi_overbought);
+      if (initialParams.volume_ratio) setVolRatio(initialParams.volume_ratio);
+      if (initialParams.donchian_period) setDonchianPeriod(initialParams.donchian_period);
+      if (initialParams.cmf_period) setCmfPeriod(initialParams.cmf_period);
+      if (initialParams.cmf_threshold) setCmfThreshold(initialParams.cmf_threshold);
+      if (initialParams.ema_filter_period !== undefined) setEmaFilter(initialParams.ema_filter_period);
+      if (initialParams.ema_fast) setEmaFast(initialParams.ema_fast);
+      if (initialParams.ema_slow) setEmaSlow(initialParams.ema_slow);
+      if (initialParams.bb_period) setBbPeriod(initialParams.bb_period);
+      if (initialParams.bb_std_dev) setBbStdDev(initialParams.bb_std_dev);
+      if (initialParams.macd_fast) setMacdFast(initialParams.macd_fast);
+      if (initialParams.macd_slow) setMacdSlow(initialParams.macd_slow);
+      if (initialParams.macd_signal) setMacdSignal(initialParams.macd_signal);
+      if (initialParams.supertrend_period) setSupertrendPeriod(initialParams.supertrend_period);
+      if (initialParams.supertrend_multiplier) setSupertrendMultiplier(initialParams.supertrend_multiplier);
+      if (initialParams.crt_lookback) setCrtLookback(initialParams.crt_lookback);
+    }
+  }, [initialSymbol, initialParams]);
+
   const handleRunBacktest = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setLoading(true);

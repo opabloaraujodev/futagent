@@ -88,7 +88,7 @@ export default function App() {
       <div>
         {/* TOP STATUS NAVBAR */}
         <header className="border-b border-white/10 bg-zinc-950 sticky top-0 z-40 backdrop-blur-md">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+          <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
               <div>
@@ -141,109 +141,109 @@ export default function App() {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 overflow-x-auto py-2 no-scrollbar border-t border-white/5 bg-zinc-950/60">
+          <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-6 flex flex-wrap items-center justify-start gap-1 sm:gap-2 py-2 border-t border-white/5 bg-zinc-950/60 no-scrollbar overflow-x-auto">
             <button
               onClick={() => setActiveTab('scan')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
                 activeTab === 'scan'
                   ? 'text-white bg-white/10 border-white/20 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent'
               }`}
             >
-              <Search className="w-3.5 h-3.5 text-emerald-400" />
+              <Search className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>SCANNER MULTI-SÍMBOLO</span>
             </button>
 
             <button
               onClick={() => setActiveTab('backtest')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
                 activeTab === 'backtest'
                   ? 'text-white bg-white/10 border-white/20 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent'
               }`}
             >
-              <BarChart2 className="w-3.5 h-3.5 text-indigo-400" />
+              <BarChart2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
               <span>BACKTEST HISTÓRICO</span>
             </button>
 
             <button
               onClick={() => setActiveTab('optimize')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
                 activeTab === 'optimize'
                   ? 'text-white bg-white/10 border-white/20 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent'
               }`}
             >
-              <Sliders className="w-3.5 h-3.5 text-amber-400" />
+              <Sliders className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>OTIMIZADOR GRID SEARCH</span>
             </button>
 
             <button
               onClick={() => setActiveTab('trade')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
                 activeTab === 'trade'
                   ? 'text-white bg-white/10 border-white/20 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent'
               }`}
             >
-              <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+              <Wallet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>TERMINAL PAPER & LIVE</span>
             </button>
 
             <button
               onClick={() => setActiveTab('pine')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
                 activeTab === 'pine'
                   ? 'text-white bg-white/10 border-white/20 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent'
               }`}
             >
-              <FileCode className="w-3.5 h-3.5 text-sky-400" />
+              <FileCode className="w-3.5 h-3.5 text-sky-400 shrink-0" />
               <span>GERADOR PINE SCRIPT</span>
             </button>
 
             <button
               onClick={() => setActiveTab('ollama')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
                 activeTab === 'ollama'
                   ? 'text-white bg-white/10 border-white/20 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent'
               }`}
             >
-              <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+              <Cpu className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
               <span>IA OLLAMA & CONFIG</span>
             </button>
 
             <button
               onClick={() => setActiveTab('cli')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
                 activeTab === 'cli'
                   ? 'text-white bg-white/10 border-white/20 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent'
               }`}
             >
-              <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+              <Terminal className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>TERMINAL CLI</span>
             </button>
 
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-all cursor-pointer whitespace-nowrap border ${
                 activeTab === 'settings'
                   ? 'text-white bg-white/10 border-white/20 shadow-sm font-bold'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent'
               }`}
             >
-              <Settings className="w-3.5 h-3.5 text-indigo-400" />
+              <Settings className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
               <span>CONFIGURAÇÕES</span>
             </button>
           </div>
         </header>
 
         {/* Main Content Area */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <main className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <ErrorBoundary>
-            {activeTab === 'scan' && (
+            <div className={activeTab === 'scan' ? 'block' : 'hidden'}>
               <ScannerTab
                 onQuickTrade={handleQuickTrade}
                 onApplyParamsToBacktest={handleApplyParamsToBacktest}
@@ -251,16 +251,16 @@ export default function App() {
                 ollamaAvailable={!!ollamaStatus?.available}
                 ollamaModels={ollamaStatus?.models || []}
               />
-            )}
+            </div>
 
-            {activeTab === 'backtest' && (
+            <div className={activeTab === 'backtest' ? 'block' : 'hidden'}>
               <BacktestTab
                 initialSymbol={backtestParams?.symbol || 'BTCUSDT'}
                 initialParams={backtestParams?.params || null}
               />
-            )}
+            </div>
 
-            {activeTab === 'optimize' && (
+            <div className={activeTab === 'optimize' ? 'block' : 'hidden'}>
               <OptimizerTab
                 initialSymbol={optimizerParams?.symbol || 'BTCUSDT'}
                 initialParams={optimizerParams?.params || null}
@@ -268,9 +268,9 @@ export default function App() {
                   handleApplyParamsToBacktest(sym, p);
                 }}
               />
-            )}
+            </div>
 
-            {activeTab === 'trade' && (
+            <div className={activeTab === 'trade' ? 'block' : 'hidden'}>
               <TradingTab
                 initialSymbol={tradeParams?.symbol || 'BTCUSDT'}
                 initialSide={tradeParams?.side || 'BUY'}
@@ -280,17 +280,23 @@ export default function App() {
                 onTradingModeChange={setExecutionMode}
                 onNavigateToSettings={() => setActiveTab('settings')}
               />
-            )}
+            </div>
 
-            {activeTab === 'pine' && <PineGeneratorTab ollamaModels={ollamaStatus?.models || []} />}
+            <div className={activeTab === 'pine' ? 'block' : 'hidden'}>
+              <PineGeneratorTab ollamaModels={ollamaStatus?.models || []} />
+            </div>
 
-            {activeTab === 'ollama' && (
+            <div className={activeTab === 'ollama' ? 'block' : 'hidden'}>
               <OllamaConfigTab ollamaStatus={ollamaStatus} onRefreshOllama={fetchOllamaStatus} />
-            )}
+            </div>
 
-            {activeTab === 'cli' && <CliTerminalTab />}
+            <div className={activeTab === 'cli' ? 'block' : 'hidden'}>
+              <CliTerminalTab />
+            </div>
 
-            {activeTab === 'settings' && <SettingsTab />}
+            <div className={activeTab === 'settings' ? 'block' : 'hidden'}>
+              <SettingsTab />
+            </div>
           </ErrorBoundary>
         </main>
       </div>

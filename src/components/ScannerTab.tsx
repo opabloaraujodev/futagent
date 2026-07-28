@@ -21,7 +21,22 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
   const globalDefaults = loadGlobalSettings();
 
   const defaultList = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'DOGEUSDT', 'XRPUSDT', 'ADAUSDT'];
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(defaultList);
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('futagent_scanner_symbols');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return defaultList;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('futagent_scanner_symbols', JSON.stringify(selectedSymbols));
+  }, [selectedSymbols]);
   const [customSymbol, setCustomSymbol] = useState('');
   const [timeframe, setTimeframe] = useState('15m');
   const [strategy, setStrategy] = useState('rsi_volume');
@@ -864,19 +879,42 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
           </span>
         </div>
 
-        {results.length === 0 ? (
+        {selectedSymbols.length === 0 ? (
           <div className="bg-zinc-900/50 border border-white/10 rounded-xl p-10 text-center">
             <AlertCircle className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-            <p className="text-slate-300 text-xs font-mono font-semibold">Nenhum contrato atende aos filtros atuais.</p>
+            <p className="text-slate-300 text-xs font-mono font-semibold">Nenhum contrato selecionado para varredura.</p>
             <p className="text-slate-500 text-[11px] mt-1 font-mono">
-              Marque "Exibir Todos os Pares" ou ajuste os níveis de RSI e Volume Spike.
+              Adicione símbolos na barra superior do scanner.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {results.map((res) => {
+            {selectedSymbols.map((sym) => {
+              const res = results.find((r) => r.symbol === sym);
+              if (!res) {
+                return (
+                  <div
+                    key={sym}
+                    className="bg-zinc-900/40 border border-white/10 rounded-xl p-5 shadow-lg flex flex-col justify-between items-center text-center min-h-[220px]"
+                  >
+                    <div className="flex items-center justify-between w-full border-b border-white/5 pb-2.5">
+                      <span className="font-bold font-mono text-sm text-white">{sym}</span>
+                      <span className="text-[10px] font-mono text-slate-500">Aguardando cotação...</span>
+                    </div>
+                    <div className="my-auto py-6 flex flex-col items-center gap-2 text-slate-400 font-mono text-xs">
+                      <RefreshCw className="w-5 h-5 animate-spin text-emerald-400" />
+                      <span>Atualizando dados do par {sym}...</span>
+                    </div>
+                  </div>
+                );
+              }
+
               const isLongAlert = res.signal === 'LONG_ALERT';
               const isShortAlert = res.signal === 'SHORT_ALERT';
+              const formattedPrice = Number(res.price || 0).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 4,
+              });
 
               return (
                 <div
@@ -897,7 +935,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                         <span className="text-[10px] font-mono text-slate-500 block">Futures USDⓈ-M</span>
                       </div>
                       <div className="text-right">
-                        <span className="font-mono text-sm font-bold text-white">${res.price}</span>
+                        <span className="font-mono text-sm font-bold text-white">${formattedPrice}</span>
                         <span
                           className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded block mt-0.5 tracking-wider ${
                             isLongAlert
@@ -953,13 +991,13 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                       <div className="flex justify-between items-center text-[11px]">
                         <span className="text-slate-500">Suporte 1:</span>
                         <span className="text-emerald-400 font-medium">
-                          ${res.support_levels?.[0] || '---'}
+                          ${res.support_levels?.[0] ? res.support_levels[0].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '---'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-[11px]">
                         <span className="text-slate-500">Resistência 1:</span>
                         <span className="text-rose-400 font-medium">
-                          ${res.resistance_levels?.[0] || '---'}
+                          ${res.resistance_levels?.[0] ? res.resistance_levels[0].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '---'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center border-t border-white/5 pt-1 text-[11px]">
@@ -990,15 +1028,22 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                   {/* Ações Rápidas */}
                   <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-white/10">
                     <button
-                      onClick={() =>
+                      onClick={() => {
+                        const isShort = isShortAlert;
+                        const sl = isShort
+                          ? (res.resistance_levels[0] || Number((res.price * 1.02).toFixed(4)))
+                          : (res.support_levels[0] || Number((res.price * 0.98).toFixed(4)));
+                        const tp = isShort
+                          ? (res.support_levels[0] || Number((res.price * 0.98).toFixed(4)))
+                          : (res.resistance_levels[0] || Number((res.price * 1.02).toFixed(4)));
                         onQuickTrade(
                           res.symbol,
-                          isShortAlert ? 'SELL' : 'BUY',
+                          isShort ? 'SELL' : 'BUY',
                           res.price,
-                          res.support_levels[0] || res.price * 0.98,
-                          res.resistance_levels[0] || res.price * 1.02
-                        )
-                      }
+                          sl,
+                          tp
+                        );
+                      }}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold font-mono py-1.5 px-2 rounded-lg transition-all text-center cursor-pointer shadow-[0_0_8px_rgba(16,185,129,0.2)]"
                     >
                       TRADE PAPER

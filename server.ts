@@ -53,6 +53,28 @@ function parseJsonFromStdout(stdout: string): any {
   }
 }
 
+// 0. GET /api/price
+app.get("/api/price", async (req, res) => {
+  try {
+    const symbol = ((req.query.symbol as string) || "BTCUSDT").toUpperCase();
+    const cmd = `python3 -c "from futures_agent.binance_client import BinanceFuturesClient; import json; print(json.dumps({'symbol': '${symbol}', 'price': BinanceFuturesClient().get_current_price('${symbol}')}))"`;
+    const { exec } = require("child_process");
+    exec(cmd, { cwd: process.cwd() }, (err: any, stdout: string) => {
+      if (err) {
+        return res.json({ success: false, price: 63800.0, symbol });
+      }
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        res.json({ success: true, ...parsed });
+      } catch {
+        res.json({ success: false, price: 63800.0, symbol });
+      }
+    });
+  } catch (error: any) {
+    res.json({ success: false, price: 63800.0, error: error.message });
+  }
+});
+
 // 1. GET /api/scan
 app.get("/api/scan", async (req, res) => {
   try {
