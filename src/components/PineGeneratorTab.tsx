@@ -16,6 +16,7 @@ export const PineGeneratorTab: React.FC<PineGeneratorTabProps> = ({ ollamaModels
   const [copied, setCopied] = useState(false);
 
   const presets = [
+    'Estratégia HTF Power of 3 (PO3) com Trailing Stop e Fases de Acumulação/Manipulação/Distribuição',
     'Estratégia Donchian CMF Breakout (Canal de 20 períodos + Chaikin Money Flow > 0.05 + EMA 200 + Stop ATR)',
     'Estratégia de RSI e Volume Spike para scalp 5m',
     'Rompimento de suporte e resistência com filtro ATR e Stop Móvel',

@@ -446,6 +446,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               <option value="macd_volume">MACD + Volume Spike</option>
               <option value="supertrend_atr">Supertrend Trend Following</option>
               <option value="crt_sweep">Candle Range Theory (CRT - Sweep)</option>
+              <option value="po3_trailing">HTF Power of 3 (PO3) + Trailing Stop</option>
             </select>
           </div>
 

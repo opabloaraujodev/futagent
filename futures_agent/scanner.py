@@ -13,7 +13,8 @@ from futures_agent.indicators import (
     calculate_bollinger_bands,
     calculate_macd,
     calculate_supertrend,
-    calculate_candle_range_theory
+    calculate_candle_range_theory,
+    calculate_po3
 )
 from futures_agent.models import ScanResult
 from futures_agent.ollama_advisor import OllamaAdvisor
@@ -142,6 +143,15 @@ class MarketScanner:
                     signal = "LONG_ALERT"
                 elif len(crt_sigs) > 0 and crt_sigs[-1] == -1:
                     signal = "SHORT_ALERT"
+            elif "PO3" in s_upper or "POWER" in s_upper or "ACCUM" in s_upper:
+                po3_sigs, po3_phases, po3_stops, po3_opens, po3_tops, po3_bots = calculate_po3(
+                    klines, htf_period_bars=12, accum_multiplier=10, trail_multiplier=3.0, atr_period=14
+                )
+                if len(po3_sigs) > 0:
+                    if po3_sigs[-1] == 1:
+                        signal = "LONG_ALERT"
+                    elif po3_sigs[-1] == -1:
+                        signal = "SHORT_ALERT"
             else:  # rsi_volume
                 if is_oversold and is_spike:
                     signal = "LONG_ALERT"

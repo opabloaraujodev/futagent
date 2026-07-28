@@ -102,6 +102,8 @@ class StrategyOptimizer:
             strat_mode = "supertrend_atr"
         elif "CRT" in s_upper or "CANDLE" in s_upper or "RANGE" in s_upper or "SWEEP" in s_upper:
             strat_mode = "crt_sweep"
+        elif "PO3" in s_upper or "POWER" in s_upper or "ACCUM" in s_upper:
+            strat_mode = "po3_trailing"
         else:
             strat_mode = "rsi_volume"
 
@@ -159,6 +161,11 @@ class StrategyOptimizer:
             param_combinations = [
                 {"strategy": "crt_sweep", "crt_lookback": p_crt, "stop_loss_pct": p_sl, "take_profit_pct": p_tp}
                 for (p_crt, p_sl, p_tp) in itertools.product(crt_lookbacks, stop_losses, take_profits)
+            ]
+        elif strat_mode == "po3_trailing":
+            param_combinations = [
+                {"strategy": "po3_trailing", "stop_loss_pct": p_sl, "take_profit_pct": p_tp}
+                for (p_sl, p_tp) in itertools.product(stop_losses, take_profits)
             ]
         else:
             rsi_periods = rsi_periods or [10, 14]

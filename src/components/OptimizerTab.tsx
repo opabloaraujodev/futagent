@@ -250,6 +250,7 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
               <option value="macd_volume">MACD Histogram + Volume Spike</option>
               <option value="supertrend_atr">Supertrend Trend Following</option>
               <option value="crt_sweep">Candle Range Theory (CRT - Liquidity Sweep)</option>
+              <option value="po3_trailing">HTF Power of 3 (PO3) + Trailing Stop</option>
             </select>
           </div>
 

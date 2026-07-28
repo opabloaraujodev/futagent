@@ -392,3 +392,140 @@ def calculate_candle_range_theory(candles: List[Candle], lookback_range: int = 1
 
     return signals, range_highs, range_lows
 
+
+def calculate_po3(
+    candles: List[Candle],
+    htf_period_bars: int = 12,
+    accum_multiplier: int = 10,
+    trail_multiplier: float = 3.0,
+    atr_period: int = 14
+) -> Tuple[List[int], List[str], List[float], List[float], List[float], List[float]]:
+    """
+    Calcula a lógica HTF Power of 3 (PO3) com Trailing Stop:
+    - Acumulação (Accumulation): Consolidação inicial em torno do HTF Open por `accum_multiplier` bars.
+    - Manipulação (Manipulation): Rompimento falso/inicial dos limites de acumulação.
+    - Distribuição (Distribution): Expansão direcional confirmada com Trailing Stop via ATR.
+
+    Retorna:
+      - signals: List[int] (+1 para Bullish/LONG, -1 para Bearish/SHORT, 0 para Neutro)
+      - phases: List[str] ('ACCUMULATION', 'MANIPULATION', 'DISTRIBUTION')
+      - trailing_stops: List[float] (Nível de Trailing Stop atual)
+      - htf_opens: List[float] (Preço de Abertura do HTF)
+      - accum_tops: List[float] (Topo do Canal de Acumulação)
+      - accum_bots: List[float] (Fundo do Canal de Acumulação)
+    """
+    n = len(candles)
+    if n == 0:
+        return [], [], [], [], [], []
+
+    atr_vals = calculate_atr(candles, period=atr_period)
+
+    signals = [0] * n
+    phases = ["ACCUMULATION"] * n
+    trailing_stops = [0.0] * n
+    htf_opens = [candles[0].open] * n
+    accum_tops = [candles[0].high] * n
+    accum_bots = [candles[0].low] * n
+
+    htf_open = candles[0].open
+    accum_top = candles[0].high
+    accum_bot = candles[0].low
+
+    manipulated = False
+    in_distribution = False
+    breakout_dir = 0
+    trailing_stop = 0.0
+
+    session_bar_count = 0
+
+    for i in range(n):
+        c = candles[i]
+        cur_atr = atr_vals[i] if i < len(atr_vals) else (c.high - c.low)
+
+        # Início de um novo bloco/sessão HTF
+        if i % max(1, htf_period_bars) == 0:
+            htf_open = c.open
+            accum_top = c.high
+            accum_bot = c.low
+            manipulated = False
+            in_distribution = False
+            breakout_dir = 0
+            trailing_stop = 0.0
+            session_bar_count = 0
+
+        session_bar_count += 1
+        htf_opens[i] = htf_open
+
+        # Fase A: Acumulação
+        if not manipulated:
+            if session_bar_count <= accum_multiplier:
+                accum_top = max(accum_top, c.high)
+                accum_bot = min(accum_bot, c.low)
+
+            accum_tops[i] = accum_top
+            accum_bots[i] = accum_bot
+
+            # Testar Breakout da faixa de Acumulação -> Manipulação
+            if c.close > accum_top:
+                manipulated = True
+                breakout_dir = 1
+                trailing_stop = c.close - (cur_atr * trail_multiplier)
+                phases[i] = "MANIPULATION"
+                signals[i] = 1
+            elif c.close < accum_bot:
+                manipulated = True
+                breakout_dir = -1
+                trailing_stop = c.close + (cur_atr * trail_multiplier)
+                phases[i] = "MANIPULATION"
+                signals[i] = -1
+            else:
+                phases[i] = "ACCUMULATION"
+                signals[i] = 0
+
+        # Fase B & C: Manipulação e Distribuição
+        else:
+            accum_tops[i] = accum_top
+            accum_bots[i] = accum_bot
+
+            # Testar rompimento do Trailing Stop durante Manipulação
+            stop_hit = False
+            if breakout_dir == 1 and c.close < trailing_stop:
+                stop_hit = True
+            elif breakout_dir == -1 and c.close > trailing_stop:
+                stop_hit = True
+
+            if stop_hit:
+                if not in_distribution:
+                    # Virada de Manipulação para Distribuição (Inversão)
+                    in_distribution = True
+                    if breakout_dir == 1:
+                        breakout_dir = -1
+                        trailing_stop = c.close + (cur_atr * trail_multiplier)
+                    else:
+                        breakout_dir = 1
+                        trailing_stop = c.close - (cur_atr * trail_multiplier)
+                else:
+                    # Stop da Distribuição atingido -> Reset de Sinal
+                    trailing_stop = c.close
+
+            # Ajustar Trailing Stop dinâmico
+            if breakout_dir == 1:
+                target_stop = c.close - (cur_atr * trail_multiplier)
+                if trailing_stop == 0.0:
+                    trailing_stop = target_stop
+                else:
+                    trailing_stop = max(trailing_stop, target_stop)
+            elif breakout_dir == -1:
+                target_stop = c.close + (cur_atr * trail_multiplier)
+                if trailing_stop == 0.0:
+                    trailing_stop = target_stop
+                else:
+                    trailing_stop = min(trailing_stop, target_stop)
+
+            phases[i] = "DISTRIBUTION" if in_distribution else "MANIPULATION"
+            signals[i] = breakout_dir
+            trailing_stops[i] = round(trailing_stop, 4)
+
+    return signals, phases, trailing_stops, htf_opens, accum_tops, accum_bots
+
+

@@ -12,7 +12,8 @@ from futures_agent.indicators import (
     calculate_bollinger_bands,
     calculate_macd,
     calculate_supertrend,
-    calculate_candle_range_theory
+    calculate_candle_range_theory,
+    calculate_po3
 )
 from futures_agent.models import BacktestResult, Trade
 from futures_agent.data_loader import load_historical_klines_from_json
@@ -165,6 +166,8 @@ class Backtester:
             strat_mode = "supertrend_atr"
         elif "CRT" in s_upper or "CANDLE" in s_upper or "RANGE" in s_upper or "SWEEP" in s_upper:
             strat_mode = "crt_sweep"
+        elif "PO3" in s_upper or "POWER" in s_upper or "ACCUM" in s_upper:
+            strat_mode = "po3_trailing"
         else:
             strat_mode = "rsi_volume"
 
@@ -243,6 +246,9 @@ class Backtester:
         macd_line, macd_signal, macd_hist = calculate_macd(close_prices, fast_period=macd_fast, slow_period=macd_slow, signal_period=macd_signal)
         supertrend_line, supertrend_dir = calculate_supertrend(klines, period=supertrend_period, multiplier=supertrend_multiplier)
         crt_signals, crt_highs, crt_lows = calculate_candle_range_theory(klines, lookback_range=crt_lookback)
+        po3_signals, po3_phases, po3_stops, po3_opens, po3_tops, po3_bots = calculate_po3(
+            klines, htf_period_bars=12, accum_multiplier=10, trail_multiplier=3.0, atr_period=atr_period
+        )
         atr_series = calculate_atr(klines, period=atr_period)
 
         capital = initial_capital
@@ -381,6 +387,11 @@ class Backtester:
                         exit_price = cur_price
                         exit_reason = "CRT_EXIT"
                         pnl_val = (exit_price - entry_p) * qty
+                    elif strat_mode == "po3_trailing" and (po3_signals[i] == -1 or (po3_stops[i] > 0 and cur_price <= po3_stops[i])):
+                        exit_triggered = True
+                        exit_price = cur_price
+                        exit_reason = "PO3_EXIT"
+                        pnl_val = (exit_price - entry_p) * qty
 
                     if exit_triggered:
                         if m_type == "ISOLATED":
@@ -469,6 +480,11 @@ class Backtester:
                         exit_triggered = True
                         exit_price = cur_price
                         exit_reason = "CRT_EXIT"
+                        pnl_val = (entry_p - exit_price) * qty
+                    elif strat_mode == "po3_trailing" and (po3_signals[i] == 1 or (po3_stops[i] > 0 and cur_price >= po3_stops[i])):
+                        exit_triggered = True
+                        exit_price = cur_price
+                        exit_reason = "PO3_EXIT"
                         pnl_val = (entry_p - exit_price) * qty
 
                     if exit_triggered:
@@ -573,6 +589,12 @@ class Backtester:
                     if crt_signals[i] == 1:
                         is_long_signal = True
                     elif crt_signals[i] == -1:
+                        is_short_signal = True
+
+                elif strat_mode == "po3_trailing":
+                    if po3_signals[i] == 1 and (i == 0 or po3_signals[i - 1] != 1):
+                        is_long_signal = True
+                    elif po3_signals[i] == -1 and (i == 0 or po3_signals[i - 1] != -1):
                         is_short_signal = True
 
                 # Se houver sinal de entrada, calcular margem e stop/tp

@@ -186,7 +186,9 @@ class BinanceFuturesClient:
         step_ms = 15 * 60 * 1000  # 15 min default
 
         candles = []
-        random.seed(hash(symbol) + limit)
+        # Usa o timestamp atual em blocos para que o preço flutue dinamicamente a cada atualização
+        time_block = int(time.time() / 5)
+        random.seed(hash(symbol) + limit + time_block)
 
         for i in range(limit):
             ts = now_ms - (limit - i) * step_ms
