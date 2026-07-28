@@ -407,13 +407,56 @@ export const SettingsTab: React.FC<{ onSettingsUpdated?: () => void }> = ({ onSe
                   type="text"
                   value={settings.data_dir}
                   onChange={(e) => handleChange('data_dir', e.target.value)}
-                  placeholder="/home/pablo/datadown/data/monthly"
+                  placeholder="/mnt/e/datadown/data/monthly/15m"
                   className="w-full bg-black/60 border border-white/15 text-sky-200 font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-sky-500 font-semibold"
                 />
               </div>
               <p className="text-[10px] text-slate-500 font-mono mt-1.5">
                 Caminho absoluto ou relativo onde estão armazenados os arquivos de klines/candles em formato JSON (ex: <code className="text-sky-300">BTCUSDT_15m.json</code>).
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* BLOCO 5: FREQUÊNCIA DE ATUALIZAÇÃO AUTOMÁTICA */}
+        <div className="lg:col-span-2 bg-zinc-950 border border-white/10 rounded-2xl p-5 space-y-4 shadow-md">
+          <div className="flex items-center gap-2.5 pb-3 border-b border-white/5">
+            <RefreshCw className="w-4 h-4 text-emerald-400" />
+            <h3 className="text-xs font-bold font-mono text-white tracking-wider uppercase">
+              5. Atualização Automática de Cotações (Auto-Refresh)
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[11px] text-slate-300 font-mono font-semibold block mb-1.5">
+                Intervalo Padrão em Segundos
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="3600"
+                  value={settings.auto_refresh_interval ?? 5}
+                  onChange={(e) => handleChange('auto_refresh_interval', Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/15 text-emerald-300 font-mono text-xs font-bold rounded-xl p-3 focus:outline-none focus:border-emerald-500"
+                />
+                <span className="text-xs font-mono font-bold text-slate-400">segundos</span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-mono mt-1.5">
+                Defina <code className="text-emerald-300">0</code> para desativar o auto-refresh automático ou escolha entre 1 e 3600 segundos (Padrão: 5s).
+              </p>
+            </div>
+
+            <div className="bg-black/40 border border-white/5 rounded-xl p-3 flex flex-col justify-center">
+              <span className="text-xs font-mono text-slate-300 font-bold block mb-1">
+                Estado Atual do Auto-Refresh:
+              </span>
+              <span className="text-xs font-mono text-emerald-400 font-semibold">
+                {(settings.auto_refresh_interval ?? 5) > 0
+                  ? `Atualizando a cada ${settings.auto_refresh_interval ?? 5} segundos`
+                  : 'Desativado (Somente atualização manual)'}
+              </span>
             </div>
           </div>
         </div>

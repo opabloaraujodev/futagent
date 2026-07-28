@@ -58,40 +58,34 @@ app.get("/api/scan", async (req, res) => {
   try {
     const symbols = (req.query.symbols as string) || "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,DOGEUSDT,XRPUSDT";
     const timeframe = (req.query.timeframe as string) || "15m";
+    const strategy = (req.query.strategy as string) || "rsi_volume";
     const rsiPeriod = req.query.rsi_period || "14";
     const rsiLow = req.query.rsi_low || "30";
     const rsiHigh = req.query.rsi_high || "70";
     const volRatio = req.query.vol_ratio || "2.0";
+    const donchianPeriod = req.query.donchian_period || "20";
+    const cmfPeriod = req.query.cmf_period || "20";
+    const cmfThreshold = req.query.cmf_threshold || "0.05";
+    const emaFast = req.query.ema_fast || "9";
+    const emaSlow = req.query.ema_slow || "21";
+    const bbPeriod = req.query.bb_period || "20";
+    const bbStdDev = req.query.bb_std_dev || "2.0";
+    const macdFast = req.query.macd_fast || "12";
+    const macdSlow = req.query.macd_slow || "26";
+    const macdSignal = req.query.macd_signal || "9";
+    const supertrendPeriod = req.query.supertrend_period || "10";
+    const supertrendMultiplier = req.query.supertrend_multiplier || "3.0";
+    const crtLookback = req.query.crt_lookback || "1";
     const showAll = req.query.all === "true" ? "--all" : "";
     const withOllama = req.query.with_ollama === "true" ? "--with-ollama" : "";
     const model = (req.query.model as string) || "llama3";
     const useLocalJson = req.query.use_local_json === "true" ? "--use-local-json" : "";
-    const dataDir = (req.query.data_dir as string) || "/home/pablo/datadown/data/monthly";
+    const dataDir = (req.query.data_dir as string) || "/mnt/e/datadown/data/monthly/15m";
     const periods = (req.query.periods as string) || "";
     const startPeriod = (req.query.start_period as string) || "";
     const endPeriod = (req.query.end_period as string) || "";
 
-    const strategy = (req.query.strategy as string) || "rsi_volume";
-    const donchianPeriod = req.query.donchian_period || "20";
-    const cmfPeriod = req.query.cmf_period || "20";
-    const cmfThreshold = req.query.cmf_threshold || "0.05";
-    const vwapDeviationPct = req.query.vwap_deviation_pct || "0.3";
-    const chopThreshold = req.query.chop_threshold || "61.0";
-    const supertrendPeriod = req.query.supertrend_period || "10";
-    const supertrendMultiplier = req.query.supertrend_multiplier || "3.0";
-    const stochRsiPeriod = req.query.stoch_rsi_period || "14";
-    const bbPeriod = req.query.bb_period || "20";
-    const bbStdDev = req.query.bb_std_dev || "2.0";
-    const kcAtrPeriod = req.query.kc_atr_period || "10";
-    const kcAtrMult = req.query.kc_atr_mult || "2.0";
-    const orderflowLookback = req.query.orderflow_lookback || "20";
-    const fundingThreshold = req.query.funding_threshold || "0.0005";
-    const ichimokuTenkan = req.query.ichimoku_tenkan || "9";
-    const ichimokuKijun = req.query.ichimoku_kijun || "26";
-    const ichimokuSenkouB = req.query.ichimoku_senkou_b || "52";
-    const pivotVolPeriod = req.query.pivot_vol_period || "20";
-
-    let cmd = `scan --symbols "${symbols}" --timeframe "${timeframe}" --strategy "${strategy}" --rsi-period ${rsiPeriod} --rsi-low ${rsiLow} --rsi-high ${rsiHigh} --vol-ratio ${volRatio} ${showAll} ${withOllama} --model "${model}" --donchian-period ${donchianPeriod} --cmf-period ${cmfPeriod} --cmf-threshold ${cmfThreshold} --vwap-deviation-pct ${vwapDeviationPct} --chop-threshold ${chopThreshold} --supertrend-period ${supertrendPeriod} --supertrend-multiplier ${supertrendMultiplier} --stoch-rsi-period ${stochRsiPeriod} --bb-period ${bbPeriod} --bb-std-dev ${bbStdDev} --kc-atr-period ${kcAtrPeriod} --kc-atr-mult ${kcAtrMult} --orderflow-lookback ${orderflowLookback} --funding-threshold ${fundingThreshold} --ichimoku-tenkan ${ichimokuTenkan} --ichimoku-kijun ${ichimokuKijun} --ichimoku-senkou-b ${ichimokuSenkouB} --pivot-vol-period ${pivotVolPeriod}`;
+    let cmd = `scan --symbols "${symbols}" --timeframe "${timeframe}" --strategy "${strategy}" --rsi-period ${rsiPeriod} --rsi-low ${rsiLow} --rsi-high ${rsiHigh} --vol-ratio ${volRatio} --donchian-period ${donchianPeriod} --cmf-period ${cmfPeriod} --cmf-threshold ${cmfThreshold} --ema-fast ${emaFast} --ema-slow ${emaSlow} --bb-period ${bbPeriod} --bb-std-dev ${bbStdDev} --macd-fast ${macdFast} --macd-slow ${macdSlow} --macd-signal ${macdSignal} --supertrend-period ${supertrendPeriod} --supertrend-multiplier ${supertrendMultiplier} --crt-lookback ${crtLookback} ${showAll} ${withOllama} --model "${model}"`;
     if (useLocalJson) {
       cmd += ` ${useLocalJson} --data-dir "${dataDir}"`;
       if (periods) cmd += ` --periods "${periods}"`;
@@ -103,19 +97,8 @@ app.get("/api/scan", async (req, res) => {
     const { stdout } = await runAgentCli(cmd);
     
     const parsed = parseJsonFromStdout(stdout);
-    if (parsed && parsed.results) {
-      res.json({
-        success: true,
-        count: parsed.results.length,
-        data: parsed.results,
-        errors: parsed.errors || [],
-        total_scanned: parsed.total_scanned || 0,
-        total_failed: parsed.total_failed || 0
-      });
-    } else {
-      const dataList = Array.isArray(parsed) ? parsed : [];
-      res.json({ success: true, count: dataList.length, data: dataList, errors: [], total_scanned: 0, total_failed: 0 });
-    }
+    const dataList = Array.isArray(parsed) ? parsed : [];
+    res.json({ success: true, count: dataList.length, data: dataList });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -137,6 +120,16 @@ app.post("/api/backtest", async (req, res) => {
       cmf_period = 20,
       cmf_threshold = 0.05,
       ema_filter = 0,
+      ema_fast = 9,
+      ema_slow = 21,
+      bb_period = 20,
+      bb_std_dev = 2.0,
+      macd_fast = 12,
+      macd_slow = 26,
+      macd_signal = 9,
+      supertrend_period = 10,
+      supertrend_multiplier = 3.0,
+      crt_lookback = 1,
       use_atr_stop = false,
       atr_period = 14,
       atr_multiplier = 2.0,
@@ -147,35 +140,19 @@ app.post("/api/backtest", async (req, res) => {
       trailing_atr_mult = 2.0,
       sl = 1.5,
       tp = 3.0,
-      vwap_deviation_pct = 0.3,
-      chop_threshold = 61.0,
-      supertrend_period = 10,
-      supertrend_multiplier = 3.0,
-      stoch_rsi_period = 14,
-      bb_period = 20,
-      bb_std_dev = 2.0,
-      kc_atr_period = 10,
-      kc_atr_mult = 2.0,
-      orderflow_lookback = 20,
-      funding_threshold = 0.0005,
-      ichimoku_tenkan = 9,
-      ichimoku_kijun = 26,
-      ichimoku_senkou_b = 52,
-      pivot_vol_period = 20,
-      pivot_exit_pct = 1.0,
       leverage = 10,
       margin_type = "ISOLATED",
       position_sizing_type = "PERCENT",
       position_size_value = 10.0,
       limit = 500,
       use_local_json = false,
-      data_dir = "/home/pablo/datadown/data/monthly",
+      data_dir = "/mnt/e/datadown/data/monthly/15m",
       periods = "",
       start_period = "",
       end_period = "",
     } = req.body;
 
-    let cmd = `backtest --symbol "${symbol}" --timeframe "${timeframe}" --strategy "${strategy}" --capital ${capital} --rsi-period ${rsi_period} --rsi-low ${rsi_low} --rsi-high ${rsi_high} --vol-ratio ${vol_ratio} --donchian-period ${donchian_period} --cmf-period ${cmf_period} --cmf-threshold ${cmf_threshold} --ema-filter ${ema_filter} --atr-period ${atr_period} --atr-multiplier ${atr_multiplier} --sl ${sl} --tp ${tp} --vwap-deviation-pct ${vwap_deviation_pct} --chop-threshold ${chop_threshold} --supertrend-period ${supertrend_period} --supertrend-multiplier ${supertrend_multiplier} --stoch-rsi-period ${stoch_rsi_period} --bb-period ${bb_period} --bb-std-dev ${bb_std_dev} --kc-atr-period ${kc_atr_period} --kc-atr-mult ${kc_atr_mult} --orderflow-lookback ${orderflow_lookback} --funding-threshold ${funding_threshold} --ichimoku-tenkan ${ichimoku_tenkan} --ichimoku-kijun ${ichimoku_kijun} --ichimoku-senkou-b ${ichimoku_senkou_b} --pivot-vol-period ${pivot_vol_period} --pivot-exit-pct ${pivot_exit_pct} --leverage ${leverage} --margin-type "${margin_type}" --position-sizing-type "${position_sizing_type}" --position-size-value ${position_size_value} --limit ${limit}`;
+    let cmd = `backtest --symbol "${symbol}" --timeframe "${timeframe}" --strategy "${strategy}" --capital ${capital} --rsi-period ${rsi_period} --rsi-low ${rsi_low} --rsi-high ${rsi_high} --vol-ratio ${vol_ratio} --donchian-period ${donchian_period} --cmf-period ${cmf_period} --cmf-threshold ${cmf_threshold} --ema-filter ${ema_filter} --ema-fast ${ema_fast} --ema-slow ${ema_slow} --bb-period ${bb_period} --bb-std-dev ${bb_std_dev} --macd-fast ${macd_fast} --macd-slow ${macd_slow} --macd-signal ${macd_signal} --supertrend-period ${supertrend_period} --supertrend-multiplier ${supertrend_multiplier} --crt-lookback ${crt_lookback} --atr-period ${atr_period} --atr-multiplier ${atr_multiplier} --sl ${sl} --tp ${tp} --leverage ${leverage} --margin-type "${margin_type}" --position-sizing-type "${position_sizing_type}" --position-size-value ${position_size_value} --limit ${limit}`;
     if (use_atr_stop) {
       cmd += " --use-atr-stop";
     }
@@ -210,10 +187,9 @@ app.post("/api/backtest", async (req, res) => {
 app.post("/api/optimize", async (req, res) => {
   try {
     const {
-      symbols: symbolsParam = "BTCUSDT",
+      symbol = "BTCUSDT",
       timeframe = "15m",
       strategy = "rsi_volume",
-      all_strategies = false,
       capital = 10000,
       use_trailing_stop = false,
       trailing_activation_pct = 1.0,
@@ -228,14 +204,13 @@ app.post("/api/optimize", async (req, res) => {
       top_n = 10,
       limit = 500,
       use_local_json = false,
-      data_dir = "/home/pablo/datadown/data/monthly",
+      data_dir = "/mnt/e/datadown/data/monthly/15m",
       periods = "",
       start_period = "",
       end_period = "",
     } = req.body;
 
-    let cmd = `optimize --symbols "${symbolsParam}" --timeframe "${timeframe}" --strategy "${strategy}" --capital ${capital} --leverage ${leverage} --margin-type "${margin_type}" --position-sizing-type "${position_sizing_type}" --position-size-value ${position_size_value} --metric "${metric}" --top-n ${top_n} --limit ${limit}`;
-    if (all_strategies) cmd += " --all-strategies";
+    let cmd = `optimize --symbol "${symbol}" --timeframe "${timeframe}" --strategy "${strategy}" --capital ${capital} --leverage ${leverage} --margin-type "${margin_type}" --position-sizing-type "${position_sizing_type}" --position-size-value ${position_size_value} --metric "${metric}" --top-n ${top_n} --limit ${limit}`;
     if (use_trailing_stop) {
       cmd += ` --use-trailing-stop --trailing-activation-pct ${trailing_activation_pct} --trailing-distance-pct ${trailing_distance_pct} --trailing-type "${trailing_type}" --trailing-atr-mult ${trailing_atr_mult}`;
     }
@@ -266,30 +241,14 @@ app.post("/api/optimize", async (req, res) => {
 // 4. GET /api/trade/status
 app.get("/api/trade/status", async (req, res) => {
   try {
-    const { stdout, stderr } = await runAgentCli("trade --status --json");
-    const parsed = parseJsonFromStdout(stdout);
-    if (parsed && typeof parsed === 'object' && 'balance' in parsed) {
-      res.json({ success: true, data: parsed });
-    } else {
-      res.json({
-        success: true,
-        data: {
-          initial_balance: 10000,
-          balance: 10000,
-          real_wallet_balance: null,
-          real_wallet_available: false,
-          equity: 10000,
-          pnl_usdt: 0,
-          pnl_pct: 0,
-          open_orders_count: 0,
-          max_simultaneous_trades: 3,
-          positions: [],
-          closed_positions: [],
-          history: [],
-          _parse_error: stderr || stdout || "Resposta inválida do backend"
-        }
-      });
+    const { stdout } = await runAgentCli("trade --status --json");
+    let parsed = {};
+    try {
+      parsed = JSON.parse(stdout);
+    } catch {
+      parsed = { balance: 10000, positions: [], history: [] };
     }
+    res.json({ success: true, data: parsed });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -311,7 +270,6 @@ app.post("/api/trade/order", async (req, res) => {
       position_size_value = null,
       is_live = false,
       confirmed = false,
-      origin = "manual",
     } = req.body;
 
     if (is_live && !confirmed) {
@@ -321,23 +279,21 @@ app.post("/api/trade/order", async (req, res) => {
       });
     }
 
-    let cmd = `trade --symbol "${symbol}" --side "${side}" --qty ${quantity} --leverage ${leverage} --margin-type "${margin_type}" --position-sizing-type "${position_sizing_type}" --origin "${origin}"`;
+    let cmd = `trade --symbol "${symbol}" --side "${side}" --qty ${quantity} --leverage ${leverage} --margin-type "${margin_type}" --position-sizing-type "${position_sizing_type}"`;
     if (price) cmd += ` --price ${price}`;
     if (sl) cmd += ` --sl ${sl}`;
     if (tp) cmd += ` --tp ${tp}`;
     if (position_size_value !== null && position_size_value !== undefined) cmd += ` --position-size-value ${position_size_value}`;
-    if (is_live) cmd += " --live --confirmed";
+    if (is_live) cmd += " --live";
     cmd += " --json";
 
     const { stdout, stderr } = await runAgentCli(cmd);
 
-    const parsed = parseJsonFromStdout(stdout);
-    if (!parsed || parsed.error) {
-      return res.json({
-        success: false,
-        error: parsed?.error || stderr || stdout || "Falha ao executar ordem na Binance.",
-        raw: stdout,
-      });
+    let parsed = {};
+    try {
+      parsed = JSON.parse(stdout);
+    } catch {
+      parsed = { message: stdout || stderr };
     }
     res.json({ success: true, data: parsed });
   } catch (error: any) {

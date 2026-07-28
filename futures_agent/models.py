@@ -53,8 +53,6 @@ class ScanResult:
     entry_zone: Dict[str, float]  # {"low": float, "high": float, "type": "LONG"|"SHORT"|"NEUTRAL"}
     signal: str  # "LONG_ALERT", "SHORT_ALERT", "NEUTRAL"
     timestamp: str
-    price_source: str = "live"  # "live" = API Binance, "kline" = último candle, "kline_stale" = candle antigo
-    strategy_name: Optional[str] = None
     donchian_upper: Optional[float] = None
     donchian_lower: Optional[float] = None
     cmf: Optional[float] = None
@@ -136,7 +134,6 @@ class Order:
     sl_price: Optional[float] = None
     tp_price: Optional[float] = None
     notes: Optional[str] = None
-    origin: str = "manual"  # "manual", "strategy", ou nome da strategy (ex: "rsi_volume")
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

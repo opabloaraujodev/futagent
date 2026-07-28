@@ -58,7 +58,7 @@ def extract_period_from_filename(filename: str) -> Optional[str]:
 def load_historical_klines_from_json(
     symbol: str,
     timeframe: str = "15m",
-    data_dir: str = "/home/pablo/datadown/data/monthly",
+    data_dir: str = "/mnt/e/datadown/data/monthly/15m",
     periods: Optional[List[str]] = None,
     start_period: Optional[str] = None,
     end_period: Optional[str] = None

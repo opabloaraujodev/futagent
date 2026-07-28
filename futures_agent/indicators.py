@@ -1,5 +1,5 @@
 import math
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple
 from futures_agent.models import Candle
 
 def calculate_rsi(prices: List[float], period: int = 14) -> List[float]:
@@ -256,299 +256,139 @@ def calculate_entry_zones(current_price: float, rsi: float, supports: List[float
         "nearest_resistance": nearest_resistance
     }
 
+def calculate_bollinger_bands(prices: List[float], period: int = 20, std_dev: float = 2.0) -> Tuple[List[float], List[float], List[float]]:
+    """Calcula as Bandas de Bollinger (Banda Superior, Banda Inferior, Linha Central/SMA)"""
+    n = len(prices)
+    if n == 0:
+        return [], [], []
 
-# =====================================================================
-# NOVOS INDICADORES — Estratégias de Day Trade
-# =====================================================================
+    upper_bands = [prices[0]] * n
+    lower_bands = [prices[0]] * n
+    middle_bands = [prices[0]] * n
 
-def calculate_vwap(candles: List[Candle]) -> List[float]:
-    """Volume Weighted Average Price (VWAP) cumulativo."""
-    if not candles:
-        return []
-    vwap_values = []
-    cum_vol = 0.0
-    cum_tp_vol = 0.0
-    for c in candles:
-        tp = (c.high + c.low + c.close) / 3.0
-        cum_vol += c.volume
-        cum_tp_vol += tp * c.volume
-        vwap_values.append(round(cum_tp_vol / cum_vol, 4) if cum_vol > 0 else c.close)
-    return vwap_values
-
-
-def calculate_choppiness_index(candles: List[Candle], period: int = 14) -> List[float]:
-    """Choppiness Index: 100 * log10(ATR_sum / (max_high - min_low)) / log10(period)"""
-    n = len(candles)
-    if n < period:
-        return [50.0] * n
-    atr_list = calculate_atr(candles, period)
-    ci_values = [50.0] * n
-    for i in range(period - 1, n):
-        atr_sum = sum(atr_list[i - period + 1: i + 1])
-        window_high = max(c.high for c in candles[i - period + 1: i + 1])
-        window_low = min(c.low for c in candles[i - period + 1: i + 1])
-        range_hl = window_high - window_low
-        if range_hl == 0 or atr_sum == 0:
-            ci_values[i] = 50.0
+    for i in range(n):
+        if i < period - 1:
+            window = prices[:i + 1]
         else:
-            ci_values[i] = round(100.0 * math.log10(atr_sum / range_hl) / math.log10(period), 2)
-    return ci_values
+            window = prices[i - period + 1 : i + 1]
 
+        sma = sum(window) / len(window)
+        variance = sum((x - sma) ** 2 for x in window) / len(window)
+        stdev = math.sqrt(variance)
 
-def calculate_adx_dmi(candles: List[Candle], period: int = 14) -> Tuple[List[float], List[float], List[float]]:
-    """ADX, +DI, -DI com suavização Wilder. Retorna (adx, plus_di, minus_di)."""
+        upper_bands[i] = round(sma + (std_dev * stdev), 4)
+        lower_bands[i] = round(sma - (std_dev * stdev), 4)
+        middle_bands[i] = round(sma, 4)
+
+    return upper_bands, lower_bands, middle_bands
+
+def calculate_macd(prices: List[float], fast_period: int = 12, slow_period: int = 26, signal_period: int = 9) -> Tuple[List[float], List[float], List[float]]:
+    """Calcula MACD (Linha MACD, Linha Sinal, Histograma)"""
+    n = len(prices)
+    if n == 0:
+        return [], [], []
+
+    fast_ema = calculate_ema(prices, period=fast_period)
+    slow_ema = calculate_ema(prices, period=slow_period)
+
+    macd_line = [round(fast_ema[i] - slow_ema[i], 4) for i in range(n)]
+    signal_line = calculate_ema(macd_line, period=signal_period)
+    histogram = [round(macd_line[i] - signal_line[i], 4) for i in range(n)]
+
+    return macd_line, signal_line, histogram
+
+def calculate_supertrend(candles: List[Candle], period: int = 10, multiplier: float = 3.0) -> Tuple[List[float], List[int]]:
+    """
+    Calcula o indicador Supertrend (Linha de Tendência, Direção: +1 para Alta/LONG, -1 para Baixa/SHORT).
+    """
     n = len(candles)
-    if n < period + 1:
-        return [0.0] * n, [25.0] * n, [25.0] * n
+    if n == 0:
+        return [], []
 
-    tr_list, plus_dm, minus_dm = [], [], []
+    atr_vals = calculate_atr(candles, period=period)
+    supertrend = [0.0] * n
+    direction = [1] * n  # 1 = Bullish / LONG, -1 = Bearish / SHORT
+
+    basic_upper = [0.0] * n
+    basic_lower = [0.0] * n
+    final_upper = [0.0] * n
+    final_lower = [0.0] * n
+
     for i in range(n):
         c = candles[i]
+        hl2 = (c.high + c.low) / 2.0
+        atr = atr_vals[i]
+
+        basic_upper[i] = hl2 + (multiplier * atr)
+        basic_lower[i] = hl2 - (multiplier * atr)
+
         if i == 0:
-            tr_list.append(c.high - c.low)
-            plus_dm.append(0.0)
-            minus_dm.append(0.0)
+            final_upper[i] = basic_upper[i]
+            final_lower[i] = basic_lower[i]
+            direction[i] = 1
+            supertrend[i] = final_lower[i]
         else:
-            prev = candles[i - 1]
-            tr_list.append(max(c.high - c.low, abs(c.high - prev.close), abs(c.low - prev.close)))
-            up = c.high - prev.high
-            down = prev.low - c.low
-            plus_dm.append(up if up > down and up > 0 else 0.0)
-            minus_dm.append(down if down > up and down > 0 else 0.0)
-
-    def wilder_smooth(data: List[float], per: int) -> List[float]:
-        result = [0.0] * len(data)
-        result[per - 1] = sum(data[:per])
-        for i in range(per, len(data)):
-            result[i] = result[i - 1] - result[i - 1] / per + data[i]
-        return result
-
-    sm_tr = wilder_smooth(tr_list, period)
-    sm_plus = wilder_smooth(plus_dm, period)
-    sm_minus = wilder_smooth(minus_dm, period)
-
-    plus_di = [0.0] * n
-    minus_di = [0.0] * n
-    dx = [0.0] * n
-    for i in range(period - 1, n):
-        if sm_tr[i] == 0:
-            plus_di[i] = 0.0
-            minus_di[i] = 0.0
-        else:
-            plus_di[i] = round(100.0 * sm_plus[i] / sm_tr[i], 2)
-            minus_di[i] = round(100.0 * sm_minus[i] / sm_tr[i], 2)
-        di_sum = plus_di[i] + minus_di[i]
-        dx[i] = round(100.0 * abs(plus_di[i] - minus_di[i]) / di_sum, 2) if di_sum > 0 else 0.0
-
-    adx = [0.0] * n
-    first_adx = sum(dx[period - 1: 2 * period - 1]) / period
-    for i in range(period - 1, 2 * period - 2):
-        adx[i] = round(first_adx, 2) if i < n else 0.0
-    if 2 * period - 2 < n:
-        adx[2 * period - 2] = round(first_adx, 2)
-    prev_adx = first_adx
-    for i in range(2 * period - 2, n):
-        adx[i] = round((prev_adx * (period - 1) + dx[i]) / period, 2)
-        prev_adx = adx[i]
-
-    return adx, plus_di, minus_di
-
-
-def calculate_supertrend(candles: List[Candle], period: int = 10, multiplier: float = 3.0) -> Tuple[List[float], List[str]]:
-    """SuperTrend. Retorna (supertrend_line, direction) onde direction é 'BULL' ou 'BEAR'."""
-    n = len(candles)
-    atr = calculate_atr(candles, period)
-    hl2 = [(c.high + c.low) / 2.0 for c in candles]
-
-    upper_band = [0.0] * n
-    lower_band = [0.0] * n
-    supertrend = [0.0] * n
-    direction = ["NEUTRAL"] * n
-
-    for i in range(n):
-        upper_band[i] = hl2[i] + multiplier * atr[i]
-        lower_band[i] = hl2[i] - multiplier * atr[i]
-
-    for i in range(n):
-        if i == 0:
-            supertrend[i] = upper_band[i]
-            direction[i] = "BEAR"
-            continue
-
-        if lower_band[i] > lower_band[i - 1] or candles[i - 1].close < lower_band[i - 1]:
-            lower_band[i] = lower_band[i]
-        else:
-            lower_band[i] = lower_band[i - 1]
-
-        if upper_band[i] < upper_band[i - 1] or candles[i - 1].close > upper_band[i - 1]:
-            upper_band[i] = upper_band[i]
-        else:
-            upper_band[i] = upper_band[i - 1]
-
-        if direction[i - 1] == "BULL":
-            if candles[i].close < lower_band[i]:
-                direction[i] = "BEAR"
-                supertrend[i] = upper_band[i]
+            # Final Upper
+            if basic_upper[i] < final_upper[i - 1] or candles[i - 1].close > final_upper[i - 1]:
+                final_upper[i] = basic_upper[i]
             else:
-                direction[i] = "BULL"
-                supertrend[i] = lower_band[i]
-        else:
-            if candles[i].close > upper_band[i]:
-                direction[i] = "BULL"
-                supertrend[i] = lower_band[i]
+                final_upper[i] = final_upper[i - 1]
+
+            # Final Lower
+            if basic_lower[i] > final_lower[i - 1] or candles[i - 1].close < final_lower[i - 1]:
+                final_lower[i] = basic_lower[i]
             else:
-                direction[i] = "BEAR"
-                supertrend[i] = upper_band[i]
+                final_lower[i] = final_lower[i - 1]
+
+            # Direção do Supertrend
+            prev_dir = direction[i - 1]
+            if prev_dir == 1 and c.close < final_lower[i - 1]:
+                direction[i] = -1
+            elif prev_dir == -1 and c.close > final_upper[i - 1]:
+                direction[i] = 1
+            else:
+                direction[i] = prev_dir
+
+            supertrend[i] = final_lower[i] if direction[i] == 1 else final_upper[i]
 
     return supertrend, direction
 
-
-def calculate_stochastic_rsi(prices: List[float], rsi_period: int = 14, stoch_period: int = 14,
-                              k_smooth: int = 3, d_smooth: int = 3) -> Tuple[List[float], List[float]]:
-    """Stochastic RSI: aplica fórmula estocástica ao RSI. Retorna (%K, %D)."""
-    rsi = calculate_rsi(prices, rsi_period)
-    n = len(rsi)
-    raw_k = [50.0] * n
-
-    for i in range(stoch_period - 1, n):
-        window = rsi[i - stoch_period + 1: i + 1]
-        rsi_min = min(window)
-        rsi_max = max(window)
-        if rsi_max - rsi_min == 0:
-            raw_k[i] = 50.0
-        else:
-            raw_k[i] = ((rsi[i] - rsi_min) / (rsi_max - rsi_min)) * 100.0
-
-    k_smoothed = _sma(raw_k, k_smooth)
-    d_smoothed = _sma(k_smoothed, d_smooth)
-    return k_smoothed, d_smoothed
-
-
-def _sma(values: List[float], period: int) -> List[float]:
-    """Simple Moving Average auxiliar."""
-    n = len(values)
+def calculate_candle_range_theory(candles: List[Candle], lookback_range: int = 1) -> Tuple[List[int], List[float], List[float]]:
+    """
+    Calcula sinais de Candle Range Theory (CRT) / Liquidity Sweep:
+    - Identifica o Range de Referência (High/Low) dos últimos 'lookback_range' candles.
+    - Sweep de Baixa -> Long Alert: Preço varre abaixo do Low do Range, mas fecha de volta dentro/acima do Low.
+    - Sweep de Alta -> Short Alert: Preço varre acima do High do Range, mas fecha de volta dentro/abaixo do High.
+    Retorna:
+      - signals: List[int] (1 para LONG, -1 para SHORT, 0 para NEUTRAL)
+      - range_highs: List[float]
+      - range_lows: List[float]
+    """
+    n = len(candles)
     if n == 0:
-        return []
-    result = [0.0] * n
-    for i in range(n):
-        start = max(0, i - period + 1)
-        window = values[start: i + 1]
-        result[i] = round(sum(window) / len(window), 4)
-    return result
+        return [], [], []
 
+    signals = [0] * n
+    range_highs = [candles[0].high] * n
+    range_lows = [candles[0].low] * n
 
-def calculate_bollinger_bands(prices: List[float], period: int = 20, std_dev: float = 2.0) -> Tuple[List[float], List[float], List[float]]:
-    """Bollinger Bands: (upper, middle/SMA, lower)."""
-    n = len(prices)
-    upper, middle, lower = [0.0] * n, [0.0] * n, [0.0] * n
-    for i in range(period - 1, n):
-        window = prices[i - period + 1: i + 1]
-        sma = sum(window) / period
-        variance = sum((x - sma) ** 2 for x in window) / period
-        std = math.sqrt(variance)
-        middle[i] = round(sma, 4)
-        upper[i] = round(sma + std_dev * std, 4)
-        lower[i] = round(sma - std_dev * std, 4)
-    return upper, middle, lower
+    for i in range(1, n):
+        start_idx = max(0, i - lookback_range)
+        ref_candles = candles[start_idx:i]
+        ref_high = max(c.high for c in ref_candles)
+        ref_low = min(c.low for c in ref_candles)
 
+        range_highs[i] = ref_high
+        range_lows[i] = ref_low
 
-def calculate_keltner_channel(candles: List[Candle], period: int = 20, atr_period: int = 10, atr_mult: float = 2.0) -> Tuple[List[float], List[float], List[float]]:
-    """Keltner Channel: (upper, EMA middle, lower)."""
-    closes = [c.close for c in candles]
-    ema = calculate_ema(closes, period)
-    atr = calculate_atr(candles, atr_period)
-    n = len(candles)
-    upper = [round(ema[i] + atr_mult * atr[i], 4) for i in range(n)]
-    lower = [round(ema[i] - atr_mult * atr[i], 4) for i in range(n)]
-    return upper, ema, lower
+        cur = candles[i]
 
+        # Sweep de Baixa -> Rejeição e Sinal Long
+        if cur.low < ref_low and cur.close > ref_low:
+            signals[i] = 1
+        # Sweep de Alta -> Rejeição e Sinal Short
+        elif cur.high > ref_high and cur.close < ref_high:
+            signals[i] = -1
 
-def calculate_cvd(candles: List[Candle]) -> List[float]:
-    """Cumulative Volume Delta simulado a partir da posição do close no range do candle."""
-    if not candles:
-        return []
-    cvd = 0.0
-    cvd_values = []
-    for c in candles:
-        hl = c.high - c.low
-        if hl == 0:
-            buy_vol = c.volume / 2.0
-            sell_vol = c.volume / 2.0
-        else:
-            buy_vol = c.volume * (c.close - c.low) / hl
-            sell_vol = c.volume * (c.high - c.close) / hl
-        cvd += buy_vol - sell_vol
-        cvd_values.append(round(cvd, 2))
-    return cvd_values
+    return signals, range_highs, range_lows
 
-
-def calculate_obv(candles: List[Candle]) -> List[float]:
-    """On-Balance Volume."""
-    if not candles:
-        return []
-    obv = 0.0
-    obv_values = []
-    for i, c in enumerate(candles):
-        if i == 0:
-            obv = c.volume
-        elif c.close > candles[i - 1].close:
-            obv += c.volume
-        elif c.close < candles[i - 1].close:
-            obv -= c.volume
-        obv_values.append(round(obv, 2))
-    return obv_values
-
-
-def calculate_pivot_points(candles: List[Candle]) -> Dict[str, float]:
-    """Pivot Points clássicos baseados no último candle completo."""
-    if not candles:
-        return {"PP": 0, "R1": 0, "R2": 0, "S1": 0, "S2": 0}
-    c = candles[-1]
-    pp = (c.high + c.low + c.close) / 3.0
-    r1 = 2.0 * pp - c.low
-    s1 = 2.0 * pp - c.high
-    r2 = pp + (c.high - c.low)
-    s2 = pp - (c.high - c.low)
-    return {
-        "PP": round(pp, 4),
-        "R1": round(r1, 4),
-        "R2": round(r2, 4),
-        "S1": round(s1, 4),
-        "S2": round(s2, 4),
-    }
-
-
-def calculate_ichimoku(candles: List[Candle], tenkan_period: int = 9, kijun_period: int = 26,
-                        senkou_b_period: int = 52) -> Dict[str, List[float]]:
-    """Ichimoku Cloud: retorna tenkan, kijun, senkou_a, senkou_b, chikou."""
-    n = len(candles)
-    tenkan = [0.0] * n
-    kijun = [0.0] * n
-    senkou_a = [0.0] * n
-    senkou_b = [0.0] * n
-    chikou = [0.0] * n
-
-    def midline(candles_slice: List[Candle]) -> float:
-        h = max(c.high for c in candles_slice)
-        l = min(c.low for c in candles_slice)
-        return (h + l) / 2.0
-
-    for i in range(n):
-        if i >= tenkan_period - 1:
-            tenkan[i] = round(midline(candles[i - tenkan_period + 1: i + 1]), 4)
-        if i >= kijun_period - 1:
-            kijun[i] = round(midline(candles[i - kijun_period + 1: i + 1]), 4)
-        if tenkan[i] > 0 and kijun[i] > 0:
-            senkou_a[i] = round((tenkan[i] + kijun[i]) / 2.0, 4)
-        if i >= senkou_b_period - 1:
-            senkou_b[i] = round(midline(candles[i - senkou_b_period + 1: i + 1]), 4)
-        if i >= kijun_period:
-            chikou[i] = round(candles[i].close, 4)
-
-    return {
-        "tenkan": tenkan,
-        "kijun": kijun,
-        "senkou_a": senkou_a,
-        "senkou_b": senkou_b,
-        "chikou": chikou,
-    }

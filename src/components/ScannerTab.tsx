@@ -1,97 +1,58 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScanResult, StrategyParams } from '../types';
 import { loadGlobalSettings } from '../utils/settings';
-import { hasParamGroup } from '../utils/strategyParams';
-import { Search, Flame, TrendingUp, TrendingDown, AlertCircle, Cpu, Play, RefreshCw, X, FolderCheck, HardDrive, Plus, Trash2, Timer } from 'lucide-react';
+import { Search, Flame, TrendingUp, TrendingDown, AlertCircle, Cpu, Play, RefreshCw, X, FolderCheck, HardDrive, Plus, Trash2 } from 'lucide-react';
 
 interface ScannerTabProps {
-  sharedSymbols: string[];
-  onSharedSymbolsChange: (symbols: string[]) => void;
   onQuickTrade: (symbol: string, side: 'BUY' | 'SELL', price: number, sl: number, tp: number) => void;
   onApplyParamsToBacktest: (symbol: string, params: StrategyParams) => void;
-  appliedParams: {
-    strategy: string;
-    rsi_period: number;
-    rsi_oversold: number;
-    rsi_overbought: number;
-    volume_ratio: number;
-  } | null;
-  onClearAppliedParams: () => void;
+  onApplyParamsToOptimizer?: (symbol: string, params: StrategyParams) => void;
   ollamaAvailable: boolean;
   ollamaModels: string[];
 }
 
 export const ScannerTab: React.FC<ScannerTabProps> = ({
-  sharedSymbols,
-  onSharedSymbolsChange,
   onQuickTrade,
   onApplyParamsToBacktest,
-  appliedParams,
-  onClearAppliedParams,
+  onApplyParamsToOptimizer,
   ollamaAvailable,
   ollamaModels,
 }) => {
   const globalDefaults = loadGlobalSettings();
 
-  const selectedSymbols = sharedSymbols;
-  const setSelectedSymbols = onSharedSymbolsChange;
   const defaultList = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'DOGEUSDT', 'XRPUSDT', 'ADAUSDT'];
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(defaultList);
   const [customSymbol, setCustomSymbol] = useState('');
   const [timeframe, setTimeframe] = useState('15m');
+  const [strategy, setStrategy] = useState('rsi_volume');
   const [rsiPeriod, setRsiPeriod] = useState(14);
   const [rsiLow, setRsiLow] = useState(30);
   const [rsiHigh, setRsiHigh] = useState(70);
   const [volRatio, setVolRatio] = useState(2.0);
+
+  // Parâmetros adicionais para outras estratégias
   const [donchianPeriod, setDonchianPeriod] = useState(20);
   const [cmfPeriod, setCmfPeriod] = useState(20);
   const [cmfThreshold, setCmfThreshold] = useState(0.05);
-  const [vwapDeviationPct, setVwapDeviationPct] = useState(0.3);
-  const [chopThreshold, setChopThreshold] = useState(61.0);
-
-  // Supertrend params
-  const [supertrendPeriod, setSupertrendPeriod] = useState(10);
-  const [supertrendMultiplier, setSupertrendMultiplier] = useState(3.0);
-  const [stochRsiPeriod, setStochRsiPeriod] = useState(14);
-
-  // Squeeze params
+  const [emaFilter, setEmaFilter] = useState(0);
+  const [emaFast, setEmaFast] = useState(9);
+  const [emaSlow, setEmaSlow] = useState(21);
   const [bbPeriod, setBbPeriod] = useState(20);
   const [bbStdDev, setBbStdDev] = useState(2.0);
-  const [kcAtrPeriod, setKcAtrPeriod] = useState(10);
-  const [kcAtrMult, setKcAtrMult] = useState(2.0);
-
-  // Orderflow params
-  const [orderflowLookback, setOrderflowLookback] = useState(20);
-
-  // Funding params
-  const [fundingThreshold, setFundingThreshold] = useState(0.0005);
-
-  // Ichimoku params
-  const [ichimokuTenkan, setIchimokuTenkan] = useState(9);
-  const [ichimokuKijun, setIchimokuKijun] = useState(26);
-  const [ichimokuSenkouB, setIchimokuSenkouB] = useState(52);
-
-  // Pivot params
-  const [pivotVolPeriod, setPivotVolPeriod] = useState(20);
+  const [macdFast, setMacdFast] = useState(12);
+  const [macdSlow, setMacdSlow] = useState(26);
+  const [macdSignal, setMacdSignal] = useState(9);
+  const [supertrendPeriod, setSupertrendPeriod] = useState(10);
+  const [supertrendMultiplier, setSupertrendMultiplier] = useState(3.0);
+  const [crtLookback, setCrtLookback] = useState(1);
 
   const [showAll, setShowAll] = useState(true);
   const [withOllama, setWithOllama] = useState(false);
   const [selectedModel, setSelectedModel] = useState('llama3');
-  const [scannerStrategy, setScannerStrategy] = useState<string>('rsi_volume');
-
-  useEffect(() => {
-    if (appliedParams) {
-      setScannerStrategy(appliedParams.strategy);
-      setRsiPeriod(appliedParams.rsi_period);
-      setRsiLow(appliedParams.rsi_oversold);
-      setRsiHigh(appliedParams.rsi_overbought);
-      setVolRatio(appliedParams.volume_ratio);
-      onClearAppliedParams();
-    }
-  }, [appliedParams]);
 
   // Fonte de Dados Local JSON
   const [useLocalJson, setUseLocalJson] = useState(globalDefaults.use_local_json);
-  const [dataDir, setDataDir] = useState(globalDefaults.data_dir || '/home/pablo/datadown/data/monthly');
+  const [dataDir, setDataDir] = useState(globalDefaults.data_dir || '/mnt/e/datadown/data/monthly/15m');
   const [periodMode, setPeriodMode] = useState<'all' | 'specific' | 'range'>('all');
   const [specificPeriods, setSpecificPeriods] = useState('2021-05,2022-06,2024-10');
   const [startPeriod, setStartPeriod] = useState('2021-01');
@@ -99,94 +60,13 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ScanResult[]>([]);
-  const [scanErrors, setScanErrors] = useState<{ symbol: string; error: string }[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
-  // Auto-refresh
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(0);
-  const [countdown, setCountdown] = useState(0);
-  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastScanTimeRef = useRef<number>(0);
-  const scanFnRef = useRef<() => void>(() => {});
-
-  const runScanWithSymbols = useCallback(async (symbolsToScan: string[]) => {
-    setLoading(true);
-    try {
-      const symsParam = symbolsToScan.join(',');
-      let url = `/api/scan?symbols=${symsParam}&timeframe=${timeframe}&strategy=${scannerStrategy}&rsi_period=${rsiPeriod}&rsi_low=${rsiLow}&rsi_high=${rsiHigh}&vol_ratio=${volRatio}&all=${showAll}&with_ollama=${withOllama}&model=${selectedModel}&donchian_period=${donchianPeriod}&cmf_period=${cmfPeriod}&cmf_threshold=${cmfThreshold}&vwap_deviation_pct=${vwapDeviationPct}&chop_threshold=${chopThreshold}&supertrend_period=${supertrendPeriod}&supertrend_multiplier=${supertrendMultiplier}&stoch_rsi_period=${stochRsiPeriod}&bb_period=${bbPeriod}&bb_std_dev=${bbStdDev}&kc_atr_period=${kcAtrPeriod}&kc_atr_mult=${kcAtrMult}&orderflow_lookback=${orderflowLookback}&funding_threshold=${fundingThreshold}&ichimoku_tenkan=${ichimokuTenkan}&ichimoku_kijun=${ichimokuKijun}&ichimoku_senkou_b=${ichimokuSenkouB}&pivot_vol_period=${pivotVolPeriod}`;
-      
-      if (useLocalJson) {
-        url += `&use_local_json=true&data_dir=${encodeURIComponent(dataDir)}`;
-        if (periodMode === 'specific' && specificPeriods.trim()) {
-          url += `&periods=${encodeURIComponent(specificPeriods)}`;
-        } else if (periodMode === 'range') {
-          if (startPeriod) url += `&start_period=${startPeriod}`;
-          if (endPeriod) url += `&end_period=${endPeriod}`;
-        }
-      }
-
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (data.success) {
-        setResults(data.data || []);
-        setScanErrors(data.errors || []);
-      } else {
-        setScanErrors([{ symbol: 'SCANNER', error: data.error || 'Erro desconhecido ao executar scan' }]);
-      }
-    } catch (error) {
-      console.error('Erro ao executar scan:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [timeframe, scannerStrategy, rsiPeriod, rsiLow, rsiHigh, volRatio, showAll, withOllama, selectedModel, useLocalJson, dataDir, periodMode, specificPeriods, startPeriod, endPeriod]);
-
-  const runScan = useCallback(() => {
-    runScanWithSymbols(selectedSymbols);
-  }, [runScanWithSymbols, selectedSymbols]);
-
-  scanFnRef.current = runScan;
-
-  const stopAutoRefresh = useCallback(() => {
-    if (autoRefreshRef.current) {
-      clearInterval(autoRefreshRef.current);
-      autoRefreshRef.current = null;
-    }
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
-    setCountdown(0);
-  }, []);
-
-  const startAutoRefresh = useCallback((intervalSec: number) => {
-    stopAutoRefresh();
-    if (intervalSec <= 0) return;
-    setCountdown(intervalSec);
-    countdownRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) return intervalSec;
-        return prev - 1;
-      });
-    }, 1000);
-    autoRefreshRef.current = setInterval(() => {
-      scanFnRef.current();
-      setCountdown(intervalSec);
-    }, intervalSec * 1000);
-  }, [stopAutoRefresh]);
-
-  const handleAutoRefreshToggle = (intervalSec: number) => {
-    if (intervalSec === autoRefreshInterval) {
-      setAutoRefreshInterval(0);
-      stopAutoRefresh();
-    } else {
-      setAutoRefreshInterval(intervalSec);
-      startAutoRefresh(intervalSec);
-    }
-  };
-
-  useEffect(() => {
-    return () => stopAutoRefresh();
-  }, []);
+  // Auto-Refresh em Tempo Real
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(globalDefaults.auto_refresh_interval ?? 5);
+  const [countdown, setCountdown] = useState<number>(globalDefaults.auto_refresh_interval ?? 5);
+  const [customIntervalInput, setCustomIntervalInput] = useState<string>('5');
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   const handleToggleSymbol = (sym: string) => {
     let next: string[];
@@ -225,16 +105,149 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
     setCustomSymbol('');
   };
 
+  const runScanWithSymbols = async (symbolsToScan: string[]) => {
+    setLoading(true);
+    try {
+      const symsParam = symbolsToScan.join(',');
+      let url = `/api/scan?symbols=${symsParam}&timeframe=${timeframe}&strategy=${strategy}&rsi_period=${rsiPeriod}&rsi_low=${rsiLow}&rsi_high=${rsiHigh}&vol_ratio=${volRatio}&donchian_period=${donchianPeriod}&cmf_period=${cmfPeriod}&cmf_threshold=${cmfThreshold}&ema_filter=${emaFilter}&ema_fast=${emaFast}&ema_slow=${emaSlow}&bb_period=${bbPeriod}&bb_std_dev=${bbStdDev}&macd_fast=${macdFast}&macd_slow=${macdSlow}&macd_signal=${macdSignal}&supertrend_period=${supertrendPeriod}&supertrend_multiplier=${supertrendMultiplier}&crt_lookback=${crtLookback}&all=${showAll}&with_ollama=${withOllama}&model=${selectedModel}`;
+      
+      if (useLocalJson) {
+        url += `&use_local_json=true&data_dir=${encodeURIComponent(dataDir)}`;
+        if (periodMode === 'specific' && specificPeriods.trim()) {
+          url += `&periods=${encodeURIComponent(specificPeriods)}`;
+        } else if (periodMode === 'range') {
+          if (startPeriod) url += `&start_period=${encodeURIComponent(startPeriod)}`;
+          if (endPeriod) url += `&end_period=${encodeURIComponent(endPeriod)}`;
+        }
+      }
+
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.success) {
+        setResults(data.data || []);
+        setLastUpdated(new Date().toLocaleTimeString('pt-BR'));
+      }
+    } catch (error) {
+      console.error('Erro ao executar scan:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runScan = () => {
+    setCountdown(autoRefreshInterval);
+    runScanWithSymbols(selectedSymbols);
+  };
+
+  const handleBatchBacktest = () => {
+    const symbolsStr = selectedSymbols.join(',');
+    const params: StrategyParams = {
+      rsi_period: rsiPeriod,
+      rsi_oversold: rsiLow,
+      rsi_overbought: rsiHigh,
+      volume_ratio: volRatio,
+      donchian_period: donchianPeriod,
+      cmf_period: cmfPeriod,
+      cmf_threshold: cmfThreshold,
+      ema_filter_period: emaFilter,
+      ema_fast: emaFast,
+      ema_slow: emaSlow,
+      bb_period: bbPeriod,
+      bb_std_dev: bbStdDev,
+      macd_fast: macdFast,
+      macd_slow: macdSlow,
+      macd_signal: macdSignal,
+      supertrend_period: supertrendPeriod,
+      supertrend_multiplier: supertrendMultiplier,
+      crt_lookback: crtLookback,
+    };
+    onApplyParamsToBacktest(symbolsStr, params);
+  };
+
+  const handleBatchOptimizer = () => {
+    const symbolsStr = selectedSymbols.join(',');
+    const params: StrategyParams = {
+      rsi_period: rsiPeriod,
+      rsi_oversold: rsiLow,
+      rsi_overbought: rsiHigh,
+      volume_ratio: volRatio,
+      donchian_period: donchianPeriod,
+      cmf_period: cmfPeriod,
+      cmf_threshold: cmfThreshold,
+      ema_filter_period: emaFilter,
+      ema_fast: emaFast,
+      ema_slow: emaSlow,
+      bb_period: bbPeriod,
+      bb_std_dev: bbStdDev,
+      macd_fast: macdFast,
+      macd_slow: macdSlow,
+      macd_signal: macdSignal,
+      supertrend_period: supertrendPeriod,
+      supertrend_multiplier: supertrendMultiplier,
+      crt_lookback: crtLookback,
+    };
+    if (onApplyParamsToOptimizer) {
+      onApplyParamsToOptimizer(symbolsStr, params);
+    }
+  };
+
+  // Reset do timer quando o intervalo ou símbolos mudam
   useEffect(() => {
-    runScan();
+    setCountdown(autoRefreshInterval);
+  }, [autoRefreshInterval]);
+
+  // Efeito de temporizador para auto-refresh
+  useEffect(() => {
+    runScanWithSymbols(selectedSymbols);
   }, [selectedSymbols]);
 
   useEffect(() => {
-    runScan();
-    if (autoRefreshInterval > 0) {
-      startAutoRefresh(autoRefreshInterval);
-    }
-  }, [scannerStrategy]);
+    if (autoRefreshInterval <= 0) return;
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          runScanWithSymbols(selectedSymbols);
+          return autoRefreshInterval;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [
+    autoRefreshInterval,
+    selectedSymbols,
+    timeframe,
+    strategy,
+    rsiPeriod,
+    rsiLow,
+    rsiHigh,
+    volRatio,
+    donchianPeriod,
+    cmfPeriod,
+    cmfThreshold,
+    emaFilter,
+    emaFast,
+    emaSlow,
+    bbPeriod,
+    bbStdDev,
+    macdFast,
+    macdSlow,
+    macdSignal,
+    supertrendPeriod,
+    supertrendMultiplier,
+    crtLookback,
+    showAll,
+    withOllama,
+    selectedModel,
+    useLocalJson,
+    dataDir,
+    periodMode,
+    specificPeriods,
+    startPeriod,
+    endPeriod
+  ]);
 
   return (
     <div className="space-y-6">
@@ -250,44 +263,14 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               Varre pares de futuros USDⓈ-M em tempo real ou arquivos JSON históricos locais, calcula RSI, volume spikes e zonas técnicas.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {autoRefreshInterval > 0 && (
-              <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
-                <Timer className="w-3 h-3 text-emerald-400 animate-pulse" />
-                <span className="text-[10px] font-mono font-bold text-emerald-400">
-                  {countdown}s
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-0.5 bg-black/50 border border-white/10 rounded-lg p-0.5">
-              {[
-                { label: 'OFF', value: 0 },
-                { label: '15s', value: 15 },
-                { label: '30s', value: 30 },
-                { label: '60s', value: 60 },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleAutoRefreshToggle(opt.value)}
-                  className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold cursor-pointer transition-all ${
-                    autoRefreshInterval === opt.value
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'text-slate-500 hover:text-slate-300 border border-transparent'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={runScan}
-              disabled={loading}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all shadow-[0_0_12px_rgba(16,185,129,0.25)] disabled:opacity-50 cursor-pointer font-mono"
-            >
-              {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-              {loading ? 'VARENDO MERCADO...' : 'EXECUTAR SCAN'}
-            </button>
-          </div>
+          <button
+            onClick={runScan}
+            disabled={loading}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all shadow-[0_0_12px_rgba(16,185,129,0.25)] disabled:opacity-50 cursor-pointer font-mono"
+          >
+            {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+            {loading ? 'VARENDO MERCADO...' : 'EXECUTAR SCAN'}
+          </button>
         </div>
 
         {/* Gerenciamento Ativo de Símbolos */}
@@ -388,7 +371,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                     className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-amber-500/60"
                   />
                   <span className="text-[9px] text-slate-500 mt-1 block">
-                    Padrão de arquivos: &#123;SIMBOLO&#125;-{timeframe}-YYYY-MM.json em /home/pablo/datadown/data/monthly
+                    Padrão de arquivos: &#123;SIMBOLO&#125;-{timeframe}-YYYY-MM.json em /mnt/e/datadown/data/monthly/15m
                   </span>
                 </div>
 
@@ -448,24 +431,21 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
         </div>
 
         {/* Parâmetros Técnicos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 pt-1">
-          <div className="lg:col-span-2">
-            <label className="text-[10px] text-emerald-300 font-mono font-bold uppercase block mb-1">Estratégia do Scanner</label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 pt-1">
+          <div>
+            <label className="text-[10px] text-emerald-300 font-mono font-bold uppercase block mb-1">Estratégia</label>
             <select
-              value={scannerStrategy}
-              onChange={(e) => setScannerStrategy(e.target.value)}
+              value={strategy}
+              onChange={(e) => setStrategy(e.target.value)}
               className="w-full bg-emerald-950/30 border border-emerald-500/30 text-emerald-200 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500"
             >
               <option value="rsi_volume">RSI + Volume Spike</option>
               <option value="donchian_cmf">Donchian CMF Breakout</option>
-              <option value="vwap_reversion">VWAP Mean Reversion</option>
-              <option value="donchian_breakout">Donchian Breakout (ADX)</option>
-              <option value="supertrend_pullback">SuperTrend Pullback</option>
-              <option value="squeeze_breakout">Squeeze Momentum Breakout</option>
-              <option value="orderflow_divergence">CVD/OBV Divergence</option>
-              <option value="funding_sentiment">Funding Rate Sentiment</option>
-              <option value="ichimoku_cloud">Ichimoku Cloud</option>
-              <option value="pivot_points">Pivot Points Bounce</option>
+              <option value="ema_cross">Cruzamento Média (EMA 9/21)</option>
+              <option value="bollinger_rsi">Bollinger Bands + RSI</option>
+              <option value="macd_volume">MACD + Volume Spike</option>
+              <option value="supertrend_atr">Supertrend Trend Following</option>
+              <option value="crt_sweep">Candle Range Theory (CRT - Sweep)</option>
             </select>
           </div>
 
@@ -484,169 +464,214 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
             </select>
           </div>
 
-          {hasParamGroup(scannerStrategy, 'rsi') && (<>
-          <div>
-            <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Período RSI</label>
-            <input
-              type="number"
-              value={rsiPeriod}
-              onChange={(e) => setRsiPeriod(Number(e.target.value))}
-              className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-emerald-500/60"
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Sobrevenda (LONG)</label>
-            <input
-              type="number"
-              value={rsiLow}
-              onChange={(e) => setRsiLow(Number(e.target.value))}
-              className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-emerald-500/60"
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Sobrecompra (SHORT)</label>
-            <input
-              type="number"
-              value={rsiHigh}
-              onChange={(e) => setRsiHigh(Number(e.target.value))}
-              className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-emerald-500/60"
-            />
-          </div>
-          </>)}
-
-          {hasParamGroup(scannerStrategy, 'volume') && (
-          <div>
-            <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Vol Spike (Múltiplo)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={volRatio}
-              onChange={(e) => setVolRatio(Number(e.target.value))}
-              className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-emerald-500/60"
-            />
-          </div>
+          {strategy === 'rsi_volume' && (
+            <>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Período RSI</label>
+                <input
+                  type="number"
+                  value={rsiPeriod}
+                  onChange={(e) => setRsiPeriod(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-emerald-500/60"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Sobrevenda (LONG)</label>
+                <input
+                  type="number"
+                  value={rsiLow}
+                  onChange={(e) => setRsiLow(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-emerald-500/60"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Sobrecompra (SHORT)</label>
+                <input
+                  type="number"
+                  value={rsiHigh}
+                  onChange={(e) => setRsiHigh(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-emerald-500/60"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Vol Spike (Ratio)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={volRatio}
+                  onChange={(e) => setVolRatio(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-emerald-500/60 font-bold text-amber-300"
+                />
+              </div>
+            </>
           )}
 
-          {hasParamGroup(scannerStrategy, 'donchian') && (
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Donchian (N)</label>
-              <input type="number" value={donchianPeriod} onChange={(e) => setDonchianPeriod(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-emerald-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
+          {strategy === 'donchian_cmf' && (
+            <>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Donchian (N)</label>
+                <input
+                  type="number"
+                  value={donchianPeriod}
+                  onChange={(e) => setDonchianPeriod(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-emerald-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">CMF Período</label>
+                <input
+                  type="number"
+                  value={cmfPeriod}
+                  onChange={(e) => setCmfPeriod(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-amber-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">CMF Threshold</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={cmfThreshold}
+                  onChange={(e) => setCmfThreshold(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-cyan-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Filtro EMA (0=Off)</label>
+                <input
+                  type="number"
+                  value={emaFilter}
+                  onChange={(e) => setEmaFilter(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-indigo-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+            </>
           )}
 
-          {hasParamGroup(scannerStrategy, 'cmf') && (<>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">CMF Período</label>
-              <input type="number" value={cmfPeriod} onChange={(e) => setCmfPeriod(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-amber-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">CMF Threshold</label>
-              <input type="number" step="0.01" value={cmfThreshold} onChange={(e) => setCmfThreshold(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-cyan-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-          </>)}
-
-          {hasParamGroup(scannerStrategy, 'vwap') && (
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">VWAP Desvio (%)</label>
-              <input type="number" step="0.1" value={vwapDeviationPct} onChange={(e) => setVwapDeviationPct(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-amber-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
+          {strategy === 'ema_cross' && (
+            <>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">EMA Rápida</label>
+                <input
+                  type="number"
+                  value={emaFast}
+                  onChange={(e) => setEmaFast(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-cyan-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">EMA Lenta</label>
+                <input
+                  type="number"
+                  value={emaSlow}
+                  onChange={(e) => setEmaSlow(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-amber-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+            </>
           )}
 
-          {hasParamGroup(scannerStrategy, 'chop') && (
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Choppiness Limiar</label>
-              <input type="number" step="1" value={chopThreshold} onChange={(e) => setChopThreshold(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-amber-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
+          {strategy === 'bollinger_rsi' && (
+            <>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Bollinger Período</label>
+                <input
+                  type="number"
+                  value={bbPeriod}
+                  onChange={(e) => setBbPeriod(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-purple-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">BB Desvio Padrão</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={bbStdDev}
+                  onChange={(e) => setBbStdDev(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-pink-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">RSI Período</label>
+                <input
+                  type="number"
+                  value={rsiPeriod}
+                  onChange={(e) => setRsiPeriod(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs font-mono"
+                />
+              </div>
+            </>
           )}
 
-          {hasParamGroup(scannerStrategy, 'supertrend') && (<>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">SuperTrend Período</label>
-              <input type="number" value={supertrendPeriod} onChange={(e) => setSupertrendPeriod(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-sky-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">SuperTrend Mult</label>
-              <input type="number" step="0.5" value={supertrendMultiplier} onChange={(e) => setSupertrendMultiplier(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-sky-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Stoch RSI Período</label>
-              <input type="number" value={stochRsiPeriod} onChange={(e) => setStochRsiPeriod(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-sky-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-          </>)}
-
-          {hasParamGroup(scannerStrategy, 'squeeze') && (<>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">BB Período</label>
-              <input type="number" value={bbPeriod} onChange={(e) => setBbPeriod(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-purple-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">BB Std Dev</label>
-              <input type="number" step="0.5" value={bbStdDev} onChange={(e) => setBbStdDev(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-purple-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">KC ATR Período</label>
-              <input type="number" value={kcAtrPeriod} onChange={(e) => setKcAtrPeriod(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-purple-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">KC ATR Mult</label>
-              <input type="number" step="0.5" value={kcAtrMult} onChange={(e) => setKcAtrMult(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-purple-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-          </>)}
-
-          {hasParamGroup(scannerStrategy, 'orderflow') && (
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Lookback (barras)</label>
-              <input type="number" value={orderflowLookback} onChange={(e) => setOrderflowLookback(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-cyan-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
+          {strategy === 'macd_volume' && (
+            <>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">MACD Rápida</label>
+                <input
+                  type="number"
+                  value={macdFast}
+                  onChange={(e) => setMacdFast(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-cyan-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">MACD Lenta</label>
+                <input
+                  type="number"
+                  value={macdSlow}
+                  onChange={(e) => setMacdSlow(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-amber-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">MACD Sinal</label>
+                <input
+                  type="number"
+                  value={macdSignal}
+                  onChange={(e) => setMacdSignal(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-indigo-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+            </>
           )}
 
-          {hasParamGroup(scannerStrategy, 'funding') && (
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Funding Threshold</label>
-              <input type="number" step="0.0001" value={fundingThreshold} onChange={(e) => setFundingThreshold(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-orange-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
+          {strategy === 'supertrend_atr' && (
+            <>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Supertrend Período</label>
+                <input
+                  type="number"
+                  value={supertrendPeriod}
+                  onChange={(e) => setSupertrendPeriod(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-emerald-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Multiplicador ATR</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={supertrendMultiplier}
+                  onChange={(e) => setSupertrendMultiplier(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-amber-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+            </>
           )}
 
-          {hasParamGroup(scannerStrategy, 'ichimoku') && (<>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Tenkan (Rápida)</label>
-              <input type="number" value={ichimokuTenkan} onChange={(e) => setIchimokuTenkan(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-teal-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Kijun (Média)</label>
-              <input type="number" value={ichimokuKijun} onChange={(e) => setIchimokuKijun(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-teal-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Senkou B (Lenta)</label>
-              <input type="number" value={ichimokuSenkouB} onChange={(e) => setIchimokuSenkouB(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-teal-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
-          </>)}
-
-          {hasParamGroup(scannerStrategy, 'pivot') && (
-            <div>
-              <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Vol SMA Período</label>
-              <input type="number" value={pivotVolPeriod} onChange={(e) => setPivotVolPeriod(Number(e.target.value))}
-                className="w-full bg-black/60 border border-white/10 text-rose-300 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500/60" />
-            </div>
+          {strategy === 'crt_sweep' && (
+            <>
+              <div>
+                <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">CRT Lookback (Candles)</label>
+                <input
+                  type="number"
+                  value={crtLookback}
+                  onChange={(e) => setCrtLookback(Number(e.target.value))}
+                  className="w-full bg-black/60 border border-white/10 text-indigo-300 rounded-lg p-2 text-xs font-mono font-bold"
+                />
+              </div>
+            </>
           )}
 
           <div className="flex flex-col justify-end">
@@ -659,6 +684,33 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               />
               <span className="font-mono text-[11px] text-slate-400">Exibir Todos</span>
             </label>
+          </div>
+        </div>
+
+        {/* Botões de Ações em Lote para os Símbolos Selecionados */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-black/30 border border-white/10 rounded-xl p-3">
+          <div className="text-xs font-mono text-slate-300">
+            Ações em lote para os <span className="font-bold text-emerald-400">{selectedSymbols.length}</span> símbolos do scanner:
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBatchBacktest}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold transition-all cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              Rodar Backtest nos Selecionados
+            </button>
+            {onApplyParamsToOptimizer && (
+              <button
+                type="button"
+                onClick={handleBatchOptimizer}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/30 hover:bg-amber-500/50 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold transition-all cursor-pointer"
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-400" />
+                Rodar Grid Search nos Selecionados
+              </button>
+            )}
           </div>
         </div>
 
@@ -707,42 +759,109 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
 
       {/* Resultados do Scan */}
       <div className="space-y-4">
+        {/* Barra de Controle de Auto-Refresh */}
+        <div className="bg-zinc-900/70 border border-emerald-500/20 rounded-xl p-3.5 shadow-md flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 bg-black/60 border border-white/10 rounded-lg px-2.5 py-1.5">
+              <RefreshCw className={`w-3.5 h-3.5 ${autoRefreshInterval > 0 ? 'text-emerald-400' : 'text-slate-500'} ${loading ? 'animate-spin' : ''}`} />
+              <span className="text-xs font-mono font-bold text-slate-200">Auto-Refresh:</span>
+              <select
+                value={showCustomInput ? 'custom' : autoRefreshInterval}
+                onChange={(e) => {
+                  if (e.target.value === 'custom') {
+                    setShowCustomInput(true);
+                  } else {
+                    setShowCustomInput(false);
+                    const val = Number(e.target.value);
+                    setAutoRefreshInterval(val);
+                    setCountdown(val);
+                  }
+                }}
+                className="bg-zinc-950 border border-white/10 text-emerald-300 font-mono text-xs font-bold rounded px-2 py-0.5 focus:outline-none focus:border-emerald-500 cursor-pointer"
+              >
+                <option value={0}>🛑 Desativado (Manual)</option>
+                <option value={3}>⚡ 3 segundos</option>
+                <option value={5}>⚡ 5 segundos (Padrão)</option>
+                <option value={10}>⏱️ 10 segundos</option>
+                <option value={15}>⏱️ 15 segundos</option>
+                <option value={30}>⏱️ 30 segundos</option>
+                <option value={60}>⏱️ 60 segundos</option>
+                <option value="custom">✏️ Personalizado (s)...</option>
+              </select>
+
+              {showCustomInput && (
+                <div className="flex items-center gap-1.5 ml-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max="3600"
+                    value={customIntervalInput}
+                    onChange={(e) => setCustomIntervalInput(e.target.value)}
+                    className="w-16 bg-zinc-950 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-bold rounded px-1.5 py-0.5 focus:outline-none text-center"
+                    placeholder="seg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const num = parseInt(customIntervalInput, 10);
+                      if (!isNaN(num) && num > 0) {
+                        setAutoRefreshInterval(num);
+                        setCountdown(num);
+                      }
+                    }}
+                    className="px-2 py-0.5 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-[11px] font-mono font-bold rounded cursor-pointer"
+                  >
+                    OK
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Indicator Status Badge */}
+            <div className="flex items-center gap-2">
+              {loading ? (
+                <span className="flex items-center gap-1.5 text-xs font-mono text-amber-300 bg-amber-950/40 border border-amber-500/30 px-2.5 py-1 rounded-lg">
+                  <RefreshCw className="w-3 h-3 animate-spin text-amber-400" />
+                  Atualizando preços...
+                </span>
+              ) : autoRefreshInterval > 0 ? (
+                <span className="flex items-center gap-1.5 text-xs font-mono text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  Próxima atualização em <span className="font-bold text-white font-mono">{countdown}s</span>
+                </span>
+              ) : (
+                <span className="text-xs font-mono text-slate-400 bg-black/40 border border-white/10 px-2.5 py-1 rounded-lg">
+                  Atualização automática pausada
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-mono text-slate-400">
+              Última atualização: <span className="text-slate-200 font-bold">{lastUpdated || results[0]?.timestamp || 'Agora'}</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={runScan}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar Agora
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
             Contratos Analisados ({results.length})
           </h3>
           <span className="text-[10px] font-mono text-slate-500">
-            {results.length > 0
-              ? `Atualizado: ${results[0]?.timestamp}${autoRefreshInterval > 0 ? ` · Próx: ${countdown}s` : ''}`
-              : loading
-              ? 'Buscando dados...'
-              : scanErrors.length > 0
-              ? 'Dados indisponíveis'
-              : 'Aguardando scan'}
+            Tempo Gráfico: {timeframe} | Intervalo Auto-Refresh: {autoRefreshInterval > 0 ? `${autoRefreshInterval}s` : 'Desativado'}
           </span>
         </div>
-
-        {scanErrors.length > 0 && (
-          <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-4 space-y-2">
-            <div className="flex items-center gap-2 text-amber-400">
-              <AlertCircle className="w-4 h-4" />
-              <span className="text-xs font-bold font-mono uppercase tracking-wider">
-                {scanErrors.length} erro(s) ao buscar dados de preços
-              </span>
-            </div>
-            <div className="space-y-1">
-              {scanErrors.map((err, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-[11px] font-mono">
-                  <span className="text-amber-300 font-bold">{err.symbol}:</span>
-                  <span className="text-amber-400/70 truncate">{err.error}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-[10px] text-amber-500/50 font-mono">
-              Verifique sua conexão com a internet ou se a API da Binance está acessível na sua região.
-            </p>
-          </div>
-        )}
 
         {results.length === 0 ? (
           <div className="bg-zinc-900/50 border border-white/10 rounded-xl p-10 text-center">
@@ -774,17 +893,10 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                     <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2.5">
                       <div>
                         <span className="font-bold font-mono text-sm text-white">{res.symbol}</span>
-                        <span className="text-[10px] font-mono text-slate-500 block">{res.strategy_name || scannerStrategy} · Futures USDⓈ-M</span>
+                        <span className="text-[10px] font-mono text-slate-500 block">Futures USDⓈ-M</span>
                       </div>
                       <div className="text-right">
-                        <span className={`font-mono text-sm font-bold ${res.price_source === 'kline_stale' ? 'text-amber-400/70' : 'text-white'}`}>
-                          ${res.price}
-                          {res.price_source === 'kline_stale' && (
-                            <span className="text-[8px] text-amber-500/60 block font-normal">
-                              ⚠ Preço antigo (API indisponível)
-                            </span>
-                          )}
-                        </span>
+                        <span className="font-mono text-sm font-bold text-white">${res.price}</span>
                         <span
                           className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded block mt-0.5 tracking-wider ${
                             isLongAlert

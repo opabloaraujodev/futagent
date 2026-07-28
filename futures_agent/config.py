@@ -50,20 +50,6 @@ DEFAULT_SYMBOLS = [
     "AVAXUSDT"
 ]
 
-STRATEGIES = [
-    "rsi_volume",
-    "donchian_cmf",
-    "vwap_reversion",
-    "donchian_breakout",
-    "supertrend_pullback",
-    "squeeze_breakout",
-    "orderflow_divergence",
-    "funding_sentiment",
-    "ichimoku_cloud",
-    "pivot_points",
-    "candle_range_theory",
-]
-
 DEFAULT_RSI_PERIOD = int(os.getenv("DEFAULT_RSI_PERIOD", "14"))
 DEFAULT_RSI_OVERSOLD = float(os.getenv("DEFAULT_RSI_OVERSOLD", "30.0"))
 DEFAULT_RSI_OVERBOUGHT = float(os.getenv("DEFAULT_RSI_OVERBOUGHT", "70.0"))

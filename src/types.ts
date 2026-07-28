@@ -30,8 +30,6 @@ export interface ScanResult {
   entry_zone: EntryZone;
   signal: 'LONG_ALERT' | 'SHORT_ALERT' | 'NEUTRAL';
   timestamp: string;
-  price_source?: 'live' | 'kline' | 'kline_stale';
-  strategy_name?: string | null;
   donchian_upper?: number | null;
   donchian_lower?: number | null;
   cmf?: number | null;
@@ -101,27 +99,21 @@ export interface StrategyParams {
   cmf_period?: number;
   cmf_threshold?: number;
   ema_filter_period?: number;
-  vwap_deviation_pct?: number;
-  chop_threshold?: number;
-  supertrend_period?: number;
-  supertrend_multiplier?: number;
-  stoch_rsi_period?: number;
+  ema_fast?: number;
+  ema_slow?: number;
   bb_period?: number;
   bb_std_dev?: number;
-  kc_atr_period?: number;
-  kc_atr_mult?: number;
-  orderflow_lookback?: number;
-  funding_threshold?: number;
-  ichimoku_tenkan?: number;
-  ichimoku_kijun?: number;
-  ichimoku_senkou_b?: number;
-  pivot_vol_period?: number;
-  pivot_exit_pct?: number;
+  macd_fast?: number;
+  macd_slow?: number;
+  macd_signal?: number;
+  supertrend_period?: number;
+  supertrend_multiplier?: number;
+  crt_lookback?: number;
   use_atr_stop?: boolean;
   atr_period?: number;
   atr_multiplier?: number;
-  stop_loss_pct: number;
-  take_profit_pct: number;
+  stop_loss_pct?: number;
+  take_profit_pct?: number;
   leverage?: number;
   margin_type?: 'ISOLATED' | 'CROSS' | 'CROSSED';
   position_sizing_type?: 'PERCENT' | 'FIXED';
@@ -161,9 +153,6 @@ export interface Position {
   tp: number | null;
   time: string;
   mode?: 'PAPER' | 'LIVE';
-  origin?: string;
-  price_update_failed?: boolean;
-  price_error?: string;
 }
 
 export interface ClosedPosition {
@@ -179,7 +168,6 @@ export interface ClosedPosition {
   exit_reason?: string;
   time: string;
   exit_time?: string;
-  origin?: string;
 }
 
 export interface Order {
@@ -199,26 +187,20 @@ export interface Order {
   sl_price?: number | null;
   tp_price?: number | null;
   notes?: string;
-  origin?: string;
 }
 
 export interface PaperState {
   initial_balance: number;
   balance: number;
-  real_wallet_balance?: number | null;
-  real_wallet_available?: boolean;
+  real_wallet_balance?: number;
   equity: number;
   pnl_usdt: number;
   pnl_pct: number;
-  live_equity?: number | null;
-  live_pnl_usdt?: number;
-  live_pnl_pct?: number;
   open_orders_count: number;
   max_simultaneous_trades: number;
   positions: Position[];
   closed_positions: ClosedPosition[];
   history: Order[];
-  _parse_error?: string;
 }
 
 export interface OllamaStatus {
@@ -242,4 +224,5 @@ export interface GlobalSettings {
   use_local_json: boolean;
   capital: number;
   leverage: number;
+  auto_refresh_interval: number;
 }

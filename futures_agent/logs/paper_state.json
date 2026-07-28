@@ -1,9 +1,31 @@
 {
-  "initial_balance": 10000.0,
-  "balance": 10000.0,
-  "real_wallet_balance": null,
-  "max_simultaneous_trades": 5,
-  "positions": [],
-  "closed_positions": [],
-  "history": []
+  "balance": 9996.7481395,
+  "positions": [
+    {
+      "id": "PAPER-1784856723334",
+      "symbol": "BTCUSDT",
+      "side": "LONG",
+      "entry_price": 65037.21,
+      "quantity": 0.05,
+      "sl": null,
+      "tp": null,
+      "time": "2026-07-24 01:32:03"
+    }
+  ],
+  "history": [
+    {
+      "order_id": "PAPER-1784856723334",
+      "symbol": "BTCUSDT",
+      "side": "BUY",
+      "type": "MARKET",
+      "price": 65037.21,
+      "quantity": 0.05,
+      "status": "FILLED",
+      "mode": "PAPER",
+      "timestamp": "2026-07-24 01:32:03",
+      "sl_price": null,
+      "tp_price": null,
+      "notes": "Ordem simulada em modo Paper Trading"
+    }
+  ]
 }

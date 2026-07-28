@@ -20,10 +20,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'scan' | 'backtest' | 'optimize' | 'trade' | 'pine' | 'ollama' | 'cli' | 'settings'>('scan');
   const [executionMode, setExecutionMode] = useState<'paper' | 'live'>('paper');
 
-  // Símbolos compartilhados entre Scanner e Optimizer
-  const defaultSymbolList = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'DOGEUSDT', 'XRPUSDT'];
-  const [sharedSymbols, setSharedSymbols] = useState<string[]>(defaultSymbolList);
-
   // Compartilhamento de Estado entre abas
   const [tradeParams, setTradeParams] = useState<{
     symbol: string;
@@ -38,12 +34,9 @@ export default function App() {
     params: StrategyParams;
   } | null>(null);
 
-  const [scannerAppliedParams, setScannerAppliedParams] = useState<{
-    strategy: string;
-    rsi_period: number;
-    rsi_oversold: number;
-    rsi_overbought: number;
-    volume_ratio: number;
+  const [optimizerParams, setOptimizerParams] = useState<{
+    symbol: string;
+    params: StrategyParams;
   } | null>(null);
 
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus | null>(null);
@@ -74,29 +67,10 @@ export default function App() {
     setActiveTab('backtest');
   };
 
-  const handleApplyParamsToScanner = (params: {
-    strategy: string;
-    rsi_period?: number;
-    rsi_oversold?: number;
-    rsi_overbought?: number;
-    volume_ratio?: number;
-  }) => {
-    setScannerAppliedParams({
-      strategy: params.strategy,
-      rsi_period: params.rsi_period ?? 14,
-      rsi_oversold: params.rsi_oversold ?? 30,
-      rsi_overbought: params.rsi_overbought ?? 70,
-      volume_ratio: params.volume_ratio ?? 2.0,
-    });
-    setActiveTab('scan');
+  const handleApplyParamsToOptimizer = (symbol: string, params: StrategyParams) => {
+    setOptimizerParams({ symbol, params });
+    setActiveTab('optimize');
   };
-
-  const handleApplyToMultiBacktest = (params: StrategyParams) => {
-    setMultiBacktestParams(params);
-    setActiveTab('backtest');
-  };
-
-  const [multiBacktestParams, setMultiBacktestParams] = useState<StrategyParams | null>(null);
 
   return (
     <div className="min-h-screen bg-[#09090b] text-slate-300 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 flex flex-col justify-between">
@@ -260,12 +234,9 @@ export default function App() {
           <ErrorBoundary>
             {activeTab === 'scan' && (
               <ScannerTab
-                sharedSymbols={sharedSymbols}
-                onSharedSymbolsChange={setSharedSymbols}
                 onQuickTrade={handleQuickTrade}
                 onApplyParamsToBacktest={handleApplyParamsToBacktest}
-                appliedParams={scannerAppliedParams}
-                onClearAppliedParams={() => setScannerAppliedParams(null)}
+                onApplyParamsToOptimizer={handleApplyParamsToOptimizer}
                 ollamaAvailable={!!ollamaStatus?.available}
                 ollamaModels={ollamaStatus?.models || []}
               />
@@ -275,21 +246,16 @@ export default function App() {
               <BacktestTab
                 initialSymbol={backtestParams?.symbol || 'BTCUSDT'}
                 initialParams={backtestParams?.params || null}
-                sharedSymbols={sharedSymbols}
-                multiSymbolParams={multiBacktestParams}
-                onClearMultiParams={() => setMultiBacktestParams(null)}
               />
             )}
 
             {activeTab === 'optimize' && (
               <OptimizerTab
-                sharedSymbols={sharedSymbols}
-                onSharedSymbolsChange={setSharedSymbols}
+                initialSymbol={optimizerParams?.symbol || 'BTCUSDT'}
+                initialParams={optimizerParams?.params || null}
                 onApplyStrategy={(sym, p) => {
                   handleApplyParamsToBacktest(sym, p);
                 }}
-                onApplyToScanner={handleApplyParamsToScanner}
-                onApplyToMultiBacktest={handleApplyToMultiBacktest}
               />
             )}
 

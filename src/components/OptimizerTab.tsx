@@ -1,26 +1,24 @@
 import React, { useState } from 'react';
 import { OptimizationResult, RankedStrategy, StrategyParams } from '../types';
 import { loadGlobalSettings } from '../utils/settings';
-import { Sliders, Zap, Award, CheckCircle2, RefreshCw, HardDrive, X, Plus } from 'lucide-react';
+import { Sliders, Zap, Award, CheckCircle2, RefreshCw, HardDrive } from 'lucide-react';
 
 interface OptimizerTabProps {
-  sharedSymbols: string[];
-  onSharedSymbolsChange: (symbols: string[]) => void;
+  initialSymbol?: string;
+  initialParams?: StrategyParams | null;
   onApplyStrategy: (symbol: string, params: StrategyParams) => void;
-  onApplyToScanner: (params: { strategy: string; rsi_period?: number; rsi_oversold?: number; rsi_overbought?: number; volume_ratio?: number }) => void;
-  onApplyToMultiBacktest: (params: StrategyParams) => void;
 }
 
-export const OptimizerTab: React.FC<OptimizerTabProps> = ({ sharedSymbols, onSharedSymbolsChange, onApplyStrategy, onApplyToScanner, onApplyToMultiBacktest }) => {
+export const OptimizerTab: React.FC<OptimizerTabProps> = ({
+  initialSymbol = 'BTCUSDT',
+  initialParams = null,
+  onApplyStrategy,
+}) => {
   const globalDefaults = loadGlobalSettings();
 
-  const selectedSymbols = sharedSymbols;
-  const setSelectedSymbols = onSharedSymbolsChange;
-  const [customSymbol, setCustomSymbol] = useState('');
+  const [symbol, setSymbol] = useState(initialSymbol);
   const [timeframe, setTimeframe] = useState('15m');
-  type StrategyType = 'rsi_volume' | 'donchian_cmf' | 'vwap_reversion' | 'donchian_breakout' | 'supertrend_pullback' | 'squeeze_breakout' | 'orderflow_divergence' | 'funding_sentiment' | 'ichimoku_cloud' | 'pivot_points';
-  const [strategy, setStrategy] = useState<StrategyType>('rsi_volume');
-  const [allStrategies, setAllStrategies] = useState(false);
+  const [strategy, setStrategy] = useState<string>('rsi_volume');
   const [capital, setCapital] = useState(globalDefaults.capital || 10000);
   const [leverage, setLeverage] = useState(globalDefaults.leverage || 10);
   const [marginType, setMarginType] = useState<'ISOLATED' | 'CROSS'>(globalDefaults.margin_type || 'ISOLATED');
@@ -41,7 +39,7 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({ sharedSymbols, onSha
 
   // Histórico Local JSON
   const [useLocalJson, setUseLocalJson] = useState(globalDefaults.use_local_json);
-  const [dataDir, setDataDir] = useState(globalDefaults.data_dir || '/home/pablo/datadown/data/monthly');
+  const [dataDir, setDataDir] = useState(globalDefaults.data_dir || '/mnt/e/datadown/data/monthly/15m');
   const [periodMode, setPeriodMode] = useState<'all' | 'specific' | 'range'>('all');
   const [specificPeriods, setSpecificPeriods] = useState('2021-05,2022-06,2024-10');
   const [startPeriod, setStartPeriod] = useState('2021-01');
@@ -51,34 +49,15 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({ sharedSymbols, onSha
   const [result, setResult] = useState<OptimizationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleRemoveSymbol = (sym: string) => {
-    setSelectedSymbols((prev) => prev.filter((s) => s !== sym));
-  };
-
-  const handleAddCustomSymbol = (e: React.FormEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const clean = customSymbol.trim().toUpperCase();
-    if (clean && !selectedSymbols.includes(clean)) {
-      setSelectedSymbols((prev) => [...prev, clean]);
-      setCustomSymbol('');
-    }
-  };
-
   const handleRunOptimization = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (selectedSymbols.length === 0) {
-      setErrorMessage('Adicione pelo menos um símbolo.');
-      return;
-    }
     setLoading(true);
     setErrorMessage(null);
     try {
       const bodyPayload: any = {
-        symbols: selectedSymbols.join(','),
+        symbol,
         timeframe,
         strategy,
-        all_strategies: allStrategies,
         capital,
         leverage,
         margin_type: marginType,
@@ -146,7 +125,7 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({ sharedSymbols, onSha
             className="flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all shadow-[0_0_12px_rgba(245,158,11,0.15)] disabled:opacity-50 cursor-pointer font-mono"
           >
             {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 fill-current" />}
-            {loading ? 'EXECUTANDO GRID SEARCH...' : allStrategies ? 'OTIMIZAR TODAS ESTRATÉGIAS' : 'OTIMIZAR PARÂMETROS'}
+            {loading ? 'EXECUTANDO GRID SEARCH...' : 'OTIMIZAR PARÂMETROS'}
           </button>
         </div>
 
@@ -197,7 +176,7 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({ sharedSymbols, onSha
                     className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-amber-500/60"
                   />
                   <span className="text-[9px] text-slate-500 mt-0.5 block">
-                    Padrão: /home/pablo/datadown/data/monthly
+                    Padrão: /mnt/e/datadown/data/monthly/15m
                   </span>
                 </div>
 
@@ -261,73 +240,27 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({ sharedSymbols, onSha
             <label className="text-[10px] text-amber-300 font-mono font-bold uppercase block mb-1">Estratégia para Otimizar</label>
             <select
               value={strategy}
-              onChange={(e) => setStrategy(e.target.value as any)}
-              disabled={allStrategies}
-              className="w-full bg-amber-950/30 border border-amber-500/30 text-amber-200 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-amber-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              onChange={(e) => setStrategy(e.target.value)}
+              className="w-full bg-amber-950/30 border border-amber-500/30 text-amber-200 rounded-lg p-2 text-xs font-mono font-bold focus:outline-none focus:border-amber-500"
             >
               <option value="rsi_volume">RSI + Volume Spike</option>
               <option value="donchian_cmf">Donchian CMF Breakout</option>
-              <option value="vwap_reversion">VWAP Mean Reversion</option>
-              <option value="donchian_breakout">Donchian Breakout (ADX)</option>
-              <option value="supertrend_pullback">SuperTrend Pullback</option>
-              <option value="squeeze_breakout">Squeeze Momentum Breakout</option>
-              <option value="orderflow_divergence">CVD/OBV Divergence</option>
-              <option value="funding_sentiment">Funding Rate Sentiment</option>
-              <option value="ichimoku_cloud">Ichimoku Cloud</option>
-              <option value="pivot_points">Pivot Points Bounce</option>
+              <option value="ema_cross">Cruzamento Média (EMA 9 / EMA 21)</option>
+              <option value="bollinger_rsi">Bollinger Bands + RSI Reversão</option>
+              <option value="macd_volume">MACD Histogram + Volume Spike</option>
+              <option value="supertrend_atr">Supertrend Trend Following</option>
+              <option value="crt_sweep">Candle Range Theory (CRT - Liquidity Sweep)</option>
             </select>
-            <div className="flex items-center gap-2 mt-2">
-              <input
-                type="checkbox"
-                id="allStrategies"
-                checked={allStrategies}
-                onChange={(e) => setAllStrategies(e.target.checked)}
-                className="accent-amber-500 w-3.5 h-3.5 cursor-pointer"
-              />
-              <label htmlFor="allStrategies" className="text-[10px] text-amber-400/80 font-mono cursor-pointer select-none">
-                Rodar TODAS as estratégias automaticamente
-              </label>
-            </div>
           </div>
 
           <div>
-            <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">
-              Símbolos ({selectedSymbols.length})
-            </label>
-            <div className="flex flex-wrap items-center gap-1.5 bg-black/60 border border-white/10 rounded-lg p-2 min-h-[36px]">
-              {selectedSymbols.map((sym) => (
-                <span
-                  key={sym}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold"
-                >
-                  {sym}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSymbol(sym)}
-                    className="hover:bg-amber-500/20 p-0.5 rounded text-amber-300 hover:text-white transition-colors cursor-pointer"
-                    title={`Remover ${sym}`}
-                  >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </span>
-              ))}
-              <form onSubmit={handleAddCustomSymbol} className="flex items-center gap-1 ml-auto">
-                <input
-                  type="text"
-                  placeholder="+ Par"
-                  value={customSymbol}
-                  onChange={(e) => setCustomSymbol(e.target.value)}
-                  className="bg-black/80 border border-white/10 rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-200 focus:outline-none focus:border-amber-500/60 w-24 uppercase placeholder:normal-case placeholder-slate-600"
-                />
-                <button
-                  type="submit"
-                  className="bg-amber-600 hover:bg-amber-500 text-white p-0.5 rounded transition-colors cursor-pointer"
-                  title="Adicionar símbolo"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </form>
-            </div>
+            <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Contrato</label>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              className="w-full bg-black/60 border border-white/10 text-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-amber-500/60 uppercase font-mono font-bold"
+            />
           </div>
 
           <div>
@@ -541,9 +474,7 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({ sharedSymbols, onSha
               <thead>
                 <tr className="border-b border-white/10 text-[10px] text-slate-500 uppercase tracking-wider bg-white/[0.01]">
                   <th className="py-2.5 px-3">Rank</th>
-                  <th className="py-2.5 px-3">Par</th>
-                  <th className="py-2.5 px-3">Estratégia</th>
-                  <th className="py-2.5 px-3">Parâmetros</th>
+                  <th className="py-2.5 px-3">Parâmetros (RSI / Vol / SL / TP)</th>
                   <th className="py-2.5 px-3">P&L (%)</th>
                   <th className="py-2.5 px-3">Win Rate (%)</th>
                   <th className="py-2.5 px-3">Fator Lucro</th>
@@ -559,24 +490,10 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({ sharedSymbols, onSha
                   return (
                     <tr key={idx} className="hover:bg-white/5 transition-colors">
                       <td className="py-3 px-3 font-bold text-amber-400">#{idx + 1}</td>
-                      <td className="py-3 px-3 font-bold text-white text-[11px]">{p.symbol || result.symbol}</td>
-                      <td className="py-3 px-3">
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-500/10 text-violet-400 border border-violet-500/30">
-                          {p.strategy || strategy}
-                        </span>
-                      </td>
                       <td className="py-3 px-3 font-mono">
                         <span className="bg-black/60 px-2 py-1 rounded border border-white/5 block text-[10px] text-slate-300">
-                          SL:{p.stop_loss_pct}% | TP:{p.take_profit_pct}%
-                          {p.rsi_period ? ` | RSI(${p.rsi_period})` : ''}
-                          {p.rsi_oversold !== undefined ? ` [${p.rsi_oversold}/${p.rsi_overbought}]` : ''}
-                          {p.volume_ratio ? ` | Vol:${p.volume_ratio}x` : ''}
-                          {p.donchian_period ? ` | Donch:${p.donchian_period}` : ''}
-                          {p.cmf_period ? ` | CMF(${p.cmf_period})` : ''}
-                          {p.cmf_threshold !== undefined ? `≥${p.cmf_threshold}` : ''}
-                          {p.ema_filter_period ? ` | EMA:${p.ema_filter_period}` : ''}
-                          {p.vwap_deviation_pct !== undefined ? ` | VWAP:${p.vwap_deviation_pct}%` : ''}
-                          {p.chop_threshold !== undefined ? ` | Chop≥${p.chop_threshold}` : ''}
+                          RSI({p.rsi_period}) [{p.rsi_oversold}/{p.rsi_overbought}] | Vol:{p.volume_ratio}x | SL:
+                          {p.stop_loss_pct}% | TP:{p.take_profit_pct}%
                         </span>
                       </td>
                       <td className={`py-3 px-3 font-bold ${(strat.total_pnl_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -588,38 +505,13 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({ sharedSymbols, onSha
                       <td className="py-3 px-3 text-rose-400">{strat.max_drawdown_pct ?? 0}%</td>
                       <td className="py-3 px-3 text-slate-500">{strat.total_trades ?? 0}</td>
                       <td className="py-3 px-3">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => onApplyStrategy(p.symbol || result.symbol, p as any)}
-                            className="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[9px] font-bold py-1 px-2 rounded transition-all cursor-pointer flex items-center gap-1 font-mono"
-                            title="Aplicar ao Backtest (símbolo)"
-                          >
-                            <CheckCircle2 className="w-3 h-3" />
-                            BT
-                          </button>
-                          <button
-                            onClick={() => onApplyToMultiBacktest(p as any)}
-                            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold py-1 px-2 rounded transition-all cursor-pointer flex items-center gap-1 font-mono"
-                            title="Aplicar ao Backtest Multi-Símbolo"
-                          >
-                            <CheckCircle2 className="w-3 h-3" />
-                            BT ALL
-                          </button>
-                          <button
-                            onClick={() => onApplyToScanner({
-                              strategy: p.strategy || strategy,
-                              rsi_period: p.rsi_period,
-                              rsi_oversold: p.rsi_oversold,
-                              rsi_overbought: p.rsi_overbought,
-                              volume_ratio: p.volume_ratio,
-                            })}
-                            className="bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/30 text-[9px] font-bold py-1 px-2 rounded transition-all cursor-pointer flex items-center gap-1 font-mono"
-                            title="Aplicar ao Scanner"
-                          >
-                            <CheckCircle2 className="w-3 h-3" />
-                            SCANNER
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => onApplyStrategy(result.symbol, p as any)}
+                          className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold py-1 px-2.5 rounded transition-all cursor-pointer flex items-center gap-1 font-mono"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          APLICAR
+                        </button>
                       </td>
                     </tr>
                   );

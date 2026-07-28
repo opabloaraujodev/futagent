@@ -65,8 +65,7 @@ export const TradingTab: React.FC<TradingTabProps> = ({
   const [paperState, setPaperState] = useState<PaperState>({
     initial_balance: 10000,
     balance: 10000,
-    real_wallet_balance: null,
-    real_wallet_available: false,
+    real_wallet_balance: 1250,
     equity: 10000,
     pnl_usdt: 0,
     pnl_pct: 0,
@@ -76,6 +75,8 @@ export const TradingTab: React.FC<TradingTabProps> = ({
     closed_positions: [],
     history: []
   });
+
+  const [refreshInterval, setRefreshInterval] = useState<number>(globalDefaults.auto_refresh_interval ?? 5);
 
   const fetchPaperStatus = async () => {
     try {
@@ -91,11 +92,13 @@ export const TradingTab: React.FC<TradingTabProps> = ({
 
   useEffect(() => {
     fetchPaperStatus();
-    const timer = setInterval(() => {
-      fetchPaperStatus();
-    }, 8000);
-    return () => clearInterval(timer);
-  }, []);
+    if (refreshInterval > 0) {
+      const timer = setInterval(() => {
+        fetchPaperStatus();
+      }, Math.max(1000, refreshInterval * 1000));
+      return () => clearInterval(timer);
+    }
+  }, [refreshInterval]);
 
   const handleModeChange = (mode: 'paper' | 'live') => {
     setTradingMode(mode);
@@ -183,7 +186,6 @@ export const TradingTab: React.FC<TradingTabProps> = ({
           tp: tpPrice ? Number(tpPrice) : null,
           is_live: tradingMode === 'live',
           confirmed: isLiveConfirmed,
-          origin: 'manual',
         }),
       });
       const data = await resp.json();
@@ -227,15 +229,9 @@ export const TradingTab: React.FC<TradingTabProps> = ({
             </div>
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-xs text-slate-400 font-mono">Binance Real:</span>
-              {paperState.real_wallet_available ? (
-                <span className="text-sm font-mono font-bold text-emerald-400">
-                  ${paperState.real_wallet_balance?.toFixed(2)} USDT
-                </span>
-              ) : (
-                <span className="text-[11px] font-mono text-slate-500 italic">
-                  Indisponível (API Keys não configuradas)
-                </span>
-              )}
+              <span className="text-sm font-mono font-bold text-emerald-400">
+                ${paperState.real_wallet_balance?.toFixed(2)} USDT
+              </span>
             </div>
           </div>
         </div>
@@ -243,43 +239,22 @@ export const TradingTab: React.FC<TradingTabProps> = ({
         {/* Card 2: Saldo Equity & PnL Geral */}
         <div className="bg-zinc-900/50 border border-white/10 rounded-xl p-4 shadow-xl flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-slate-400 block uppercase tracking-wider">
-              {tradingMode === 'live' ? 'Saldo Equity LIVE & PnL' : 'Saldo Equity & PnL'}
-            </span>
+            <span className="text-[10px] font-mono text-slate-400 block uppercase tracking-wider">Saldo Equity & PnL</span>
             <Activity className="w-3.5 h-3.5 text-indigo-400" />
           </div>
           <div>
-            {tradingMode === 'live' && paperState.real_wallet_available ? (
-              <>
-                <span className="text-xl font-mono font-bold text-white block">
-                  ${paperState.live_equity?.toFixed(2) || paperState.real_wallet_balance?.toFixed(2)} <span className="text-xs font-normal text-slate-400">USDT</span>
-                </span>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-xs font-mono font-bold flex items-center gap-0.5 ${(paperState.live_pnl_usdt ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {(paperState.live_pnl_usdt ?? 0) >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    {(paperState.live_pnl_usdt ?? 0) >= 0 ? '+' : ''}${(paperState.live_pnl_usdt ?? 0).toFixed(2)}
-                  </span>
-                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${(paperState.live_pnl_pct ?? 0) >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                    {(paperState.live_pnl_pct ?? 0) >= 0 ? '+' : ''}{(paperState.live_pnl_pct ?? 0).toFixed(2)}%
-                  </span>
-                </div>
-              </>
-            ) : (
-              <>
-                <span className="text-xl font-mono font-bold text-white block">
-                  ${paperState.equity?.toFixed(2)} <span className="text-xs font-normal text-slate-400">USDT</span>
-                </span>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-xs font-mono font-bold flex items-center gap-0.5 ${paperState.pnl_usdt >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {paperState.pnl_usdt >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    {paperState.pnl_usdt >= 0 ? '+' : ''}${paperState.pnl_usdt?.toFixed(2)}
-                  </span>
-                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${paperState.pnl_pct >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                    {paperState.pnl_pct >= 0 ? '+' : ''}{paperState.pnl_pct?.toFixed(2)}%
-                  </span>
-                </div>
-              </>
-            )}
+            <span className="text-xl font-mono font-bold text-white block">
+              ${paperState.equity?.toFixed(2)} <span className="text-xs font-normal text-slate-400">USDT</span>
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`text-xs font-mono font-bold flex items-center gap-0.5 ${paperState.pnl_usdt >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {paperState.pnl_usdt >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {paperState.pnl_usdt >= 0 ? '+' : ''}${paperState.pnl_usdt?.toFixed(2)}
+              </span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${paperState.pnl_pct >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                {paperState.pnl_pct >= 0 ? '+' : ''}{paperState.pnl_pct?.toFixed(2)}%
+              </span>
+            </div>
           </div>
         </div>
 
@@ -553,7 +528,6 @@ export const TradingTab: React.FC<TradingTabProps> = ({
                 <tr className="border-b border-white/10 text-[10px] text-slate-400 uppercase tracking-wider bg-white/[0.01]">
                   <th className="py-2.5 px-3">ID</th>
                   <th className="py-2.5 px-3">Modo</th>
-                  <th className="py-2.5 px-3">Origem</th>
                   <th className="py-2.5 px-3">Símbolo</th>
                   <th className="py-2.5 px-3">Lado</th>
                   <th className="py-2.5 px-3">Preço Entrada</th>
@@ -578,17 +552,6 @@ export const TradingTab: React.FC<TradingTabProps> = ({
                           {pos.mode || 'PAPER'}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3">
-                        {pos.origin && pos.origin !== 'manual' ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-500/10 text-violet-400 border border-violet-500/30">
-                            {pos.origin}
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/30">
-                            Manual
-                          </span>
-                        )}
-                      </td>
                       <td className="py-2.5 px-3 font-bold text-white">{pos.symbol}</td>
                       <td className="py-2.5 px-3">
                         <span
@@ -602,14 +565,7 @@ export const TradingTab: React.FC<TradingTabProps> = ({
                         </span>
                       </td>
                       <td className="py-2.5 px-3 text-slate-200">${pos.entry_price}</td>
-                      <td className={`py-2.5 px-3 font-bold ${pos.price_update_failed ? 'text-amber-400/70 italic' : 'text-amber-300'}`}>
-                        ${pos.current_price || pos.entry_price}
-                        {pos.price_update_failed && (
-                          <span className="text-[9px] text-amber-500/60 block font-normal" title={pos.price_error || 'Falha ao atualizar preço'}>
-                            ⚠ Atualização falhou
-                          </span>
-                        )}
-                      </td>
+                      <td className="py-2.5 px-3 text-amber-300 font-bold">${pos.current_price || pos.entry_price}</td>
                       <td className={`py-2.5 px-3 font-bold ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {isProfitable ? '+' : ''}${pnlUsdt.toFixed(2)}
                       </td>
@@ -675,7 +631,6 @@ export const TradingTab: React.FC<TradingTabProps> = ({
                   <tr className="border-b border-white/10 text-[10px] text-slate-400 uppercase tracking-wider bg-white/[0.01]">
                     <th className="py-2.5 px-3">ID</th>
                     <th className="py-2.5 px-3">Modo</th>
-                    <th className="py-2.5 px-3">Origem</th>
                     <th className="py-2.5 px-3">Símbolo</th>
                     <th className="py-2.5 px-3">Lado</th>
                     <th className="py-2.5 px-3">Entrada</th>
@@ -696,17 +651,6 @@ export const TradingTab: React.FC<TradingTabProps> = ({
                           <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${cp.mode === 'LIVE' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}`}>
                             {cp.mode || 'PAPER'}
                           </span>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          {cp.origin && cp.origin !== 'manual' ? (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-500/10 text-violet-400 border border-violet-500/30">
-                              {cp.origin}
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/30">
-                              Manual
-                            </span>
-                          )}
                         </td>
                         <td className="py-2.5 px-3 font-bold text-white">{cp.symbol}</td>
                         <td className="py-2.5 px-3">
@@ -749,7 +693,6 @@ export const TradingTab: React.FC<TradingTabProps> = ({
                   <tr className="border-b border-white/10 text-[10px] text-slate-400 uppercase tracking-wider bg-white/[0.01]">
                     <th className="py-2.5 px-3">ID Ordem</th>
                     <th className="py-2.5 px-3">Modo</th>
-                    <th className="py-2.5 px-3">Origem</th>
                     <th className="py-2.5 px-3">Símbolo</th>
                     <th className="py-2.5 px-3">Lado</th>
                     <th className="py-2.5 px-3">Preço</th>
@@ -763,17 +706,6 @@ export const TradingTab: React.FC<TradingTabProps> = ({
                     <tr key={ord.order_id} className="hover:bg-white/5 transition-colors">
                       <td className="py-2.5 px-3 text-slate-500 text-[11px]">{ord.order_id}</td>
                       <td className="py-2.5 px-3 font-bold text-indigo-300">{ord.mode}</td>
-                      <td className="py-2.5 px-3">
-                        {ord.origin && ord.origin !== 'manual' ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-500/10 text-violet-400 border border-violet-500/30">
-                            {ord.origin}
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/30">
-                            Manual
-                          </span>
-                        )}
-                      </td>
                       <td className="py-2.5 px-3 font-bold text-white">{ord.symbol}</td>
                       <td className="py-2.5 px-3">
                         <span

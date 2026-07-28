@@ -10,10 +10,11 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   trailing_activation_pct: 1.0,
   trailing_distance_pct: 1.0,
   trailing_atr_mult: 2.0,
-  data_dir: '/home/pablo/datadown/data/monthly',
+  data_dir: '/mnt/e/datadown/data/monthly/15m',
   use_local_json: false,
   capital: 10000,
   leverage: 10,
+  auto_refresh_interval: 5,
 };
 
 const STORAGE_KEY = 'binance_futures_agent_global_settings_v1';

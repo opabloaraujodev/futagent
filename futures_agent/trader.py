@@ -35,7 +35,7 @@ class OrderManager:
         return {
             "initial_balance": 10000.0,
             "balance": 10000.0,
-            "real_wallet_balance": None,
+            "real_wallet_balance": 1250.0,
             "max_simultaneous_trades": 3,
             "positions": [],
             "closed_positions": [],
@@ -72,25 +72,15 @@ class OrderManager:
 
     def close_paper_position(self, pos_id: str, exit_price_override: Optional[float] = None) -> Dict[str, Any]:
         state = self._load_paper_state()
-
-        # Procurar em paper positions e live positions
+        positions = state.get("positions", [])
         target_pos = None
         remaining_pos = []
-        for p in state.get("positions", []):
+
+        for p in positions:
             if p.get("id") == pos_id:
                 target_pos = p
             else:
                 remaining_pos.append(p)
-        state["positions"] = remaining_pos
-
-        if not target_pos:
-            remaining_live = []
-            for p in state.get("live_positions", []):
-                if p.get("id") == pos_id:
-                    target_pos = p
-                else:
-                    remaining_live.append(p)
-            state["live_positions"] = remaining_live
 
         if not target_pos:
             raise ValueError(f"Posição com ID '{pos_id}' não encontrada.")
@@ -110,9 +100,9 @@ class OrderManager:
         margin = (entry_price * qty) / max(1.0, lev)
         pnl_pct = (pnl_usdt / margin * 100.0) if margin > 0 else 0.0
 
-        # Atualizar saldo paper com o resultado (apenas para paper positions)
-        if target_pos.get("mode", "PAPER") == "PAPER":
-            state["balance"] += pnl_usdt
+        # Atualizar saldo disponível com o resultado do trade
+        state["balance"] += pnl_usdt
+        state["positions"] = remaining_pos
 
         timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -128,8 +118,7 @@ class OrderManager:
             "pnl_pct": round(pnl_pct, 2),
             "exit_reason": "MANUAL_CLOSE",
             "time": target_pos.get("time", timestamp_str),
-            "exit_time": timestamp_str,
-            "origin": target_pos.get("origin", "manual")
+            "exit_time": timestamp_str
         }
 
         if "closed_positions" not in state:
@@ -144,28 +133,26 @@ class OrderManager:
         init_bal = state.get("initial_balance", 10000.0)
         bal = state.get("balance", 10000.0)
         max_trades = state.get("max_simultaneous_trades", 3)
+        # Tentar buscar o saldo real da carteira Binance se chaves API estiverem configuradas
+        real_bal_api = self.client.get_futures_balance()
+        if real_bal_api is not None:
+            real_wallet = real_bal_api
+            state["real_wallet_balance"] = real_wallet
+            self._save_paper_state(state)
+        else:
+            real_wallet = state.get("real_wallet_balance", 1250.0)
 
-        # Atualizar preços e PnL não realizado de todas as posições abertas
-        all_positions = state.get("positions", []) + state.get("live_positions", [])
-        paper_unrealized_pnl = 0.0
-        live_unrealized_pnl = 0.0
+        # Atualizar preços e PnL não realizado de posições abertas
+        open_positions = state.get("positions", [])
+        total_unrealized_pnl = 0.0
 
         updated_positions = []
-        for p in all_positions:
+        for p in open_positions:
             sym = p.get("symbol", "BTCUSDT")
-            pos_mode = p.get("mode", "PAPER")
-            price_update_failed = False
-            price_error_msg = ""
             try:
                 curr_price = self.client.get_current_price(sym)
-            except Exception as e:
-                price_update_failed = True
-                price_error_msg = str(e)
-                stored_current = p.get("current_price")
-                if stored_current is not None:
-                    curr_price = float(stored_current)
-                else:
-                    curr_price = float(p.get("entry_price", 0.0))
+            except Exception:
+                curr_price = float(p.get("entry_price", 0.0))
 
             entry_price = float(p.get("entry_price", curr_price))
             qty = float(p.get("quantity", 0.0))
@@ -180,55 +167,26 @@ class OrderManager:
             margin = (entry_price * qty) / max(1.0, lev)
             pnl_pct = (pnl_usdt / margin * 100.0) if margin > 0 else 0.0
 
-            if pos_mode == "LIVE":
-                live_unrealized_pnl += pnl_usdt
-            else:
-                paper_unrealized_pnl += pnl_usdt
+            total_unrealized_pnl += pnl_usdt
 
             p_copy = dict(p)
             p_copy["current_price"] = round(curr_price, 4)
             p_copy["pnl_usdt"] = round(pnl_usdt, 2)
             p_copy["pnl_pct"] = round(pnl_pct, 2)
-            p_copy["mode"] = pos_mode
-            p_copy["price_update_failed"] = price_update_failed
-            if price_update_failed:
-                p_copy["price_error"] = price_error_msg or "Falha ao obter preço atual"
+            p_copy["mode"] = p.get("mode", "PAPER")
             updated_positions.append(p_copy)
 
-        real_wallet = None
-        real_wallet_ok = False
-        try:
-            real_wallet = self.client.get_account_balance("USDT")
-            real_wallet_ok = True
-        except Exception:
-            pass
-
-        # Equity paper = saldo paper + PnL não realizado das paper positions
-        paper_equity = bal + paper_unrealized_pnl
-        paper_pnl_usdt = paper_equity - init_bal
-        paper_pnl_pct = (paper_pnl_usdt / init_bal * 100.0) if init_bal > 0 else 0.0
-
-        # Equity live = saldo real Binance + PnL não realizado das live positions
-        live_equity = None
-        live_pnl_usdt = 0.0
-        live_pnl_pct = 0.0
-        if real_wallet_ok:
-            live_equity = real_wallet + live_unrealized_pnl
-            # Para PnL live, usamos o saldo real como referência
-            live_pnl_usdt = live_unrealized_pnl
-            live_pnl_pct = (live_pnl_usdt / real_wallet * 100.0) if real_wallet > 0 else 0.0
+        equity = bal + total_unrealized_pnl
+        pnl_usdt_total = equity - init_bal
+        pnl_pct_total = (pnl_usdt_total / init_bal * 100.0) if init_bal > 0 else 0.0
 
         return {
             "initial_balance": round(init_bal, 2),
             "balance": round(bal, 2),
-            "real_wallet_balance": round(real_wallet, 2) if real_wallet_ok else None,
-            "real_wallet_available": real_wallet_ok,
-            "equity": round(paper_equity, 2),
-            "pnl_usdt": round(paper_pnl_usdt, 2),
-            "pnl_pct": round(paper_pnl_pct, 2),
-            "live_equity": round(live_equity, 2) if live_equity is not None else None,
-            "live_pnl_usdt": round(live_pnl_usdt, 2),
-            "live_pnl_pct": round(live_pnl_pct, 2),
+            "real_wallet_balance": round(real_wallet, 2),
+            "equity": round(equity, 2),
+            "pnl_usdt": round(pnl_usdt_total, 2),
+            "pnl_pct": round(pnl_pct_total, 2),
             "open_orders_count": len(updated_positions),
             "max_simultaneous_trades": max_trades,
             "positions": updated_positions,
@@ -240,7 +198,7 @@ class OrderManager:
         state = {
             "initial_balance": initial_balance,
             "balance": initial_balance,
-            "real_wallet_balance": None,
+            "real_wallet_balance": 1250.0,
             "max_simultaneous_trades": 3,
             "positions": [],
             "closed_positions": [],
@@ -248,15 +206,6 @@ class OrderManager:
         }
         self._save_paper_state(state)
         return self.get_paper_balance()
-
-    def get_live_wallet_balance(self, asset: str = "USDT") -> Dict[str, Any]:
-        """Consulta o saldo real disponível na conta Binance Futures"""
-        balance = self.client.get_account_balance(asset)
-        return {
-            "mode": "LIVE",
-            "asset": asset,
-            "available_balance": round(balance, 2)
-        }
 
     def execute_paper_order(
         self,
@@ -270,8 +219,7 @@ class OrderManager:
         margin_type: str = "ISOLATED",
         position_sizing_type: str = "PERCENT",
         position_size_value: Optional[float] = None,
-        notes: str = "",
-        origin: str = "manual"
+        notes: str = ""
     ) -> Order:
         """Executa ordem virtual em modo Paper Trading"""
         state = self._load_paper_state()
@@ -316,8 +264,7 @@ class OrderManager:
             position_size_value=position_size_value,
             sl_price=sl_price,
             tp_price=tp_price,
-            notes=notes,
-            origin=origin
+            notes=notes
         )
 
         # Atualizar saldo virtual e posições
@@ -334,8 +281,7 @@ class OrderManager:
                 "margin_type": margin_type,
                 "sl": sl_price,
                 "tp": tp_price,
-                "time": timestamp_str,
-                "origin": origin
+                "time": timestamp_str
             })
         else:  # SELL
             state["balance"] -= cost * 0.001
@@ -349,8 +295,7 @@ class OrderManager:
                 "margin_type": margin_type,
                 "sl": sl_price,
                 "tp": tp_price,
-                "time": timestamp_str,
-                "origin": origin
+                "time": timestamp_str
             })
 
         state["history"].append(order.to_dict())
@@ -372,8 +317,7 @@ class OrderManager:
         position_sizing_type: str = "PERCENT",
         position_size_value: Optional[float] = None,
         notes: str = "",
-        force_confirmed: bool = False,
-        origin: str = "manual"
+        force_confirmed: bool = False
     ) -> Order:
         """
         Executa ordem real na Binance Futures.
@@ -391,28 +335,16 @@ class OrderManager:
         except Exception as e:
             print(f"⚠️ Aviso ao alterar alavancagem na Binance: {e}")
 
-        # current_price = price or self.client.get_current_price(symbol)
-        # actual_qty = quantity
-        # if actual_qty <= 0:
-        #     pos_val = position_size_value if position_size_value is not None else 10.0
-        #     # Em modo real, assumimos 100 USDT como saldo estimado se não soubermos
-        #     estimated_bal = 100.0
-        #     if "FIX" in position_sizing_type.upper():
-        #         margin_alloc = pos_val
-        #     else:
-        #         margin_alloc = estimated_bal * (pos_val / 100.0)
-        #     notional = margin_alloc * leverage
-        #     actual_qty = notional / current_price if current_price > 0 else 0.001
         current_price = price or self.client.get_current_price(symbol)
         actual_qty = quantity
         if actual_qty <= 0:
             pos_val = position_size_value if position_size_value is not None else 10.0
+            # Em modo real, assumimos 100 USDT como saldo estimado se não soubermos
+            estimated_bal = 100.0
             if "FIX" in position_sizing_type.upper():
                 margin_alloc = pos_val
             else:
-                # Antes: estimated_bal = 100.0 (fixo)
-                real_bal = self.client.get_account_balance("USDT")
-                margin_alloc = real_bal * (pos_val / 100.0)
+                margin_alloc = estimated_bal * (pos_val / 100.0)
             notional = margin_alloc * leverage
             actual_qty = notional / current_price if current_price > 0 else 0.001
 
@@ -452,31 +384,8 @@ class OrderManager:
             position_size_value=position_size_value,
             sl_price=sl_price,
             tp_price=tp_price,
-            notes=notes,
-            origin=origin
+            notes=notes
         )
 
         self._append_order_log(LIVE_ORDERS_FILE, order.to_dict())
-
-        # Salvar posição live no paper_state.json para rastrear PnL
-        state = self._load_paper_state()
-        if "live_positions" not in state:
-            state["live_positions"] = []
-        state["live_positions"].append({
-            "id": order.order_id,
-            "symbol": symbol.upper(),
-            "side": "LONG" if side.upper() == "BUY" else "SHORT",
-            "entry_price": order.price,
-            "quantity": actual_qty,
-            "leverage": leverage,
-            "margin_type": m_type,
-            "sl": sl_price,
-            "tp": tp_price,
-            "time": timestamp_str,
-            "mode": "LIVE",
-            "origin": origin
-        })
-        state["history"].append(order.to_dict())
-        self._save_paper_state(state)
-
         return order
