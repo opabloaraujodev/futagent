@@ -124,6 +124,25 @@ def build_parser() -> argparse.ArgumentParser:
     opt_p.add_argument("--position-size-value", type=float, default=10.0, help="Valor do dimensionamento (% ou USDT)")
     opt_p.add_argument("--metric", type=str, default="total_pnl_pct", choices=["total_pnl_pct", "win_rate_pct", "sharpe_ratio"], help="Métrica de ordenação")
     opt_p.add_argument("--top-n", type=int, default=10, help="Quantidade de melhores resultados")
+    opt_p.add_argument("--stop-losses", type=str, default="1.0,2.0", help="Lista de Stop Losses em % (separados por vírgula)")
+    opt_p.add_argument("--take-profits", type=str, default="2.0,3.0", help="Lista de Take Profits em % (separados por vírgula)")
+    opt_p.add_argument("--rsi-periods", type=str, default="", help="Lista de Períodos RSI (ex: 10,14)")
+    opt_p.add_argument("--rsi-oversolds", type=str, default="", help="Lista de Níveis Sobrevenda (ex: 25,30)")
+    opt_p.add_argument("--rsi-overboughts", type=str, default="", help="Lista de Níveis Sobrecompra (ex: 70,75)")
+    opt_p.add_argument("--volume-ratios", type=str, default="", help="Lista de Ratios de Volume (ex: 1.5,2.0)")
+    opt_p.add_argument("--donchian-periods", type=str, default="", help="Lista de Períodos Donchian (ex: 20,55)")
+    opt_p.add_argument("--cmf-periods", type=str, default="", help="Lista de Períodos CMF (ex: 20)")
+    opt_p.add_argument("--cmf-thresholds", type=str, default="", help="Lista de Limiares CMF (ex: 0.0,0.05)")
+    opt_p.add_argument("--ema-filter-periods", type=str, default="", help="Lista de Filtros EMA (ex: 0,200)")
+    opt_p.add_argument("--ema-fast-list", type=str, default="", help="Lista de EMAs Rápidas (ex: 7,9,12)")
+    opt_p.add_argument("--ema-slow-list", type=str, default="", help="Lista de EMAs Lentas (ex: 21,26)")
+    opt_p.add_argument("--bb-periods", type=str, default="", help="Lista de Períodos Bollinger (ex: 14,20)")
+    opt_p.add_argument("--bb-stds", type=str, default="", help="Lista de Desvios Padrão BB (ex: 1.8,2.0)")
+    opt_p.add_argument("--macd-fasts", type=str, default="", help="Lista de MACD Rápidas (ex: 10,12)")
+    opt_p.add_argument("--macd-slows", type=str, default="", help="Lista de MACD Lentas (ex: 24,26)")
+    opt_p.add_argument("--st-periods", type=str, default="", help="Lista de Períodos Supertrend (ex: 7,10)")
+    opt_p.add_argument("--st-mults", type=str, default="", help="Lista de Multiplicadores Supertrend (ex: 2.0,3.0)")
+    opt_p.add_argument("--crt-lookbacks", type=str, default="", help="Lista de Lookbacks CRT (ex: 1,2,3)")
     opt_p.add_argument("--limit", type=int, default=500, help="Candles históricos por combinação")
     opt_p.add_argument("--use-local-json", action="store_true", help="Usar arquivos históricos JSON locais")
     opt_p.add_argument("--data-dir", type=str, default="/mnt/e/datadown/data/monthly/15m", help="Caminho do diretório de arquivos JSON")
@@ -282,12 +301,40 @@ def main():
 
     elif args.command == "optimize":
         periods_list = [p.strip() for p in args.periods.split(",") if p.strip()] if args.periods else None
+
+        def parse_float_list(s: str) -> Optional[List[float]]:
+            if not s: return None
+            return [float(x.strip()) for x in s.split(",") if x.strip()]
+
+        def parse_int_list(s: str) -> Optional[List[int]]:
+            if not s: return None
+            return [int(x.strip()) for x in s.split(",") if x.strip()]
+
         opt = StrategyOptimizer()
         res = opt.optimize(
             symbol=args.symbol,
             timeframe=args.timeframe,
             initial_capital=args.capital,
             strategy=args.strategy,
+            rsi_periods=parse_int_list(args.rsi_periods),
+            rsi_oversolds=parse_float_list(args.rsi_oversolds),
+            rsi_overboughts=parse_float_list(args.rsi_overboughts),
+            volume_ratios=parse_float_list(args.volume_ratios),
+            donchian_periods=parse_int_list(args.donchian_periods),
+            cmf_periods=parse_int_list(args.cmf_periods),
+            cmf_thresholds=parse_float_list(args.cmf_thresholds),
+            ema_filter_periods=parse_int_list(args.ema_filter_periods),
+            ema_fast_list=parse_int_list(args.ema_fast_list),
+            ema_slow_list=parse_int_list(args.ema_slow_list),
+            bb_periods=parse_int_list(args.bb_periods),
+            bb_stds=parse_float_list(args.bb_stds),
+            macd_fasts=parse_int_list(args.macd_fasts),
+            macd_slows=parse_int_list(args.macd_slows),
+            st_periods=parse_int_list(args.st_periods),
+            st_mults=parse_float_list(args.st_mults),
+            crt_lookbacks=parse_int_list(args.crt_lookbacks),
+            stop_losses=parse_float_list(args.stop_losses),
+            take_profits=parse_float_list(args.take_profits),
             use_trailing_stop=args.use_trailing_stop,
             trailing_activation_pct=args.trailing_activation_pct,
             trailing_distance_pct=args.trailing_distance_pct,

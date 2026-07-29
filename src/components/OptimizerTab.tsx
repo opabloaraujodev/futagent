@@ -30,6 +30,27 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
   const [topN, setTopN] = useState(10);
   const [limit, setLimit] = useState(500);
 
+  // Parâmetros do Grid Search por Estratégia
+  const [stopLosses, setStopLosses] = useState('1.0, 1.5, 2.0');
+  const [takeProfits, setTakeProfits] = useState('2.0, 3.0, 4.0');
+  const [rsiPeriods, setRsiPeriods] = useState('10, 14');
+  const [rsiOversolds, setRsiOversolds] = useState('25, 30');
+  const [rsiOverboughts, setRsiOverboughts] = useState('70, 75');
+  const [volumeRatios, setVolumeRatios] = useState('1.5, 2.0');
+  const [donchianPeriods, setDonchianPeriods] = useState('20, 55');
+  const [cmfPeriods, setCmfPeriods] = useState('20');
+  const [cmfThresholds, setCmfThresholds] = useState('0.0, 0.05');
+  const [emaFilterPeriods, setEmaFilterPeriods] = useState('0, 200');
+  const [emaFastList, setEmaFastList] = useState('7, 9, 12');
+  const [emaSlowList, setEmaSlowList] = useState('21, 26');
+  const [bbPeriods, setBbPeriods] = useState('14, 20');
+  const [bbStds, setBbStds] = useState('1.8, 2.0');
+  const [macdFasts, setMacdFasts] = useState('10, 12');
+  const [macdSlows, setMacdSlows] = useState('24, 26');
+  const [stPeriods, setStPeriods] = useState('7, 10');
+  const [stMults, setStMults] = useState('2.0, 3.0');
+  const [crtLookbacks, setCrtLookbacks] = useState('1, 2, 3');
+
   // Trailing Stop Inteligente
   const [useTrailingStop, setUseTrailingStop] = useState(globalDefaults.use_trailing_stop);
   const [trailingActivationPct, setTrailingActivationPct] = useState(globalDefaults.trailing_activation_pct);
@@ -63,6 +84,25 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
         margin_type: marginType,
         position_sizing_type: positionSizingType,
         position_size_value: positionSizeValue,
+        stop_losses: stopLosses,
+        take_profits: takeProfits,
+        rsi_periods: rsiPeriods,
+        rsi_oversolds: rsiOversolds,
+        rsi_overboughts: rsiOverboughts,
+        volume_ratios: volumeRatios,
+        donchian_periods: donchianPeriods,
+        cmf_periods: cmfPeriods,
+        cmf_thresholds: cmfThresholds,
+        ema_filter_periods: emaFilterPeriods,
+        ema_fast_list: emaFastList,
+        ema_slow_list: emaSlowList,
+        bb_periods: bbPeriods,
+        bb_stds: bbStds,
+        macd_fasts: macdFasts,
+        macd_slows: macdSlows,
+        st_periods: stPeriods,
+        st_mults: stMults,
+        crt_lookbacks: crtLookbacks,
         use_trailing_stop: useTrailingStop,
         trailing_activation_pct: trailingActivationPct,
         trailing_distance_pct: trailingDistancePct,
@@ -325,6 +365,258 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
           </div>
         </div>
 
+        {/* Configuração de Parâmetros da Estratégia para Grid Search */}
+        <div className="bg-amber-950/20 border border-amber-500/20 rounded-xl p-3.5 space-y-3">
+          <div className="flex items-center gap-2 border-b border-amber-500/15 pb-2">
+            <Sliders className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-bold font-mono text-amber-300 uppercase tracking-wider">
+              Parâmetros para Combinatória do Grid Search ({strategy.toUpperCase()})
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono ml-auto">Valores separados por vírgula</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 font-mono text-xs">
+            <div>
+              <label className="text-[10px] text-slate-400 uppercase block mb-1">Stop Losses (%)</label>
+              <input
+                type="text"
+                value={stopLosses}
+                onChange={(e) => setStopLosses(e.target.value)}
+                placeholder="1.0, 1.5, 2.0"
+                className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] text-slate-400 uppercase block mb-1">Take Profits (%)</label>
+              <input
+                type="text"
+                value={takeProfits}
+                onChange={(e) => setTakeProfits(e.target.value)}
+                placeholder="2.0, 3.0, 4.0"
+                className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            {/* Parâmetros Específicos por Estratégia */}
+            {(strategy === 'rsi_volume' || strategy.includes('rsi')) && (
+              <>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Períodos RSI</label>
+                  <input
+                    type="text"
+                    value={rsiPeriods}
+                    onChange={(e) => setRsiPeriods(e.target.value)}
+                    placeholder="10, 14"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">RSI Sobrevenda (Low)</label>
+                  <input
+                    type="text"
+                    value={rsiOversolds}
+                    onChange={(e) => setRsiOversolds(e.target.value)}
+                    placeholder="25, 30"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">RSI Sobrecompra (High)</label>
+                  <input
+                    type="text"
+                    value={rsiOverboughts}
+                    onChange={(e) => setRsiOverboughts(e.target.value)}
+                    placeholder="70, 75"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Ratio de Volume Spike</label>
+                  <input
+                    type="text"
+                    value={volumeRatios}
+                    onChange={(e) => setVolumeRatios(e.target.value)}
+                    placeholder="1.5, 2.0"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {strategy === 'donchian_cmf' && (
+              <>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Períodos Donchian</label>
+                  <input
+                    type="text"
+                    value={donchianPeriods}
+                    onChange={(e) => setDonchianPeriods(e.target.value)}
+                    placeholder="20, 55"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Períodos CMF</label>
+                  <input
+                    type="text"
+                    value={cmfPeriods}
+                    onChange={(e) => setCmfPeriods(e.target.value)}
+                    placeholder="20"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Limiares CMF</label>
+                  <input
+                    type="text"
+                    value={cmfThresholds}
+                    onChange={(e) => setCmfThresholds(e.target.value)}
+                    placeholder="0.0, 0.05"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Filtro EMA (0 = off)</label>
+                  <input
+                    type="text"
+                    value={emaFilterPeriods}
+                    onChange={(e) => setEmaFilterPeriods(e.target.value)}
+                    placeholder="0, 200"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {strategy === 'ema_cross' && (
+              <>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">EMA Rápida</label>
+                  <input
+                    type="text"
+                    value={emaFastList}
+                    onChange={(e) => setEmaFastList(e.target.value)}
+                    placeholder="7, 9, 12"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">EMA Lenta</label>
+                  <input
+                    type="text"
+                    value={emaSlowList}
+                    onChange={(e) => setEmaSlowList(e.target.value)}
+                    placeholder="21, 26"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {strategy === 'bollinger_rsi' && (
+              <>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Períodos Bollinger</label>
+                  <input
+                    type="text"
+                    value={bbPeriods}
+                    onChange={(e) => setBbPeriods(e.target.value)}
+                    placeholder="14, 20"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Desvios Padrão BB</label>
+                  <input
+                    type="text"
+                    value={bbStds}
+                    onChange={(e) => setBbStds(e.target.value)}
+                    placeholder="1.8, 2.0"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {strategy === 'macd_volume' && (
+              <>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">MACD Rápidas</label>
+                  <input
+                    type="text"
+                    value={macdFasts}
+                    onChange={(e) => setMacdFasts(e.target.value)}
+                    placeholder="10, 12"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">MACD Lentas</label>
+                  <input
+                    type="text"
+                    value={macdSlows}
+                    onChange={(e) => setMacdSlows(e.target.value)}
+                    placeholder="24, 26"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Ratio de Volume</label>
+                  <input
+                    type="text"
+                    value={volumeRatios}
+                    onChange={(e) => setVolumeRatios(e.target.value)}
+                    placeholder="1.5, 2.0"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {strategy === 'supertrend_atr' && (
+              <>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Períodos Supertrend</label>
+                  <input
+                    type="text"
+                    value={stPeriods}
+                    onChange={(e) => setStPeriods(e.target.value)}
+                    placeholder="7, 10"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block mb-1">Multiplicadores Supertrend</label>
+                  <input
+                    type="text"
+                    value={stMults}
+                    onChange={(e) => setStMults(e.target.value)}
+                    placeholder="2.0, 3.0"
+                    className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {strategy === 'crt_sweep' && (
+              <div>
+                <label className="text-[10px] text-slate-400 uppercase block mb-1">Lookback CRT (Velas)</label>
+                <input
+                  type="text"
+                  value={crtLookbacks}
+                  onChange={(e) => setCrtLookbacks(e.target.value)}
+                  placeholder="1, 2, 3"
+                  className="w-full bg-black/80 border border-white/10 text-amber-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-white/5">
           <div>
             <label className="text-[10px] text-slate-400 font-mono uppercase block mb-1">Alavancagem</label>
@@ -487,7 +779,7 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
               <thead>
                 <tr className="border-b border-white/10 text-[10px] text-slate-500 uppercase tracking-wider bg-white/[0.01]">
                   <th className="py-2.5 px-3">Rank</th>
-                  <th className="py-2.5 px-3">Parâmetros (RSI / Vol / SL / TP)</th>
+                  <th className="py-2.5 px-3">Parâmetros Otimizados (Estratégia / SL / TP)</th>
                   <th className="py-2.5 px-3">P&L (%)</th>
                   <th className="py-2.5 px-3">Win Rate (%)</th>
                   <th className="py-2.5 px-3">Fator Lucro</th>
@@ -500,13 +792,33 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
               <tbody className="divide-y divide-white/[0.03]">
                 {(result.top_strategies || []).map((strat, idx) => {
                   const p = strat.params || {};
+                  let paramText = "";
+                  if (p.strategy === "ema_cross" || p.ema_fast) {
+                    paramText = `EMA Fast: ${p.ema_fast} | EMA Slow: ${p.ema_slow}`;
+                  } else if (p.strategy === "donchian_cmf" || p.donchian_period) {
+                    paramText = `Donchian: ${p.donchian_period} | CMF: ${p.cmf_period} (Thresh: ${p.cmf_threshold}) | EMA Fltr: ${p.ema_filter_period || 0}`;
+                  } else if (p.strategy === "bollinger_rsi" || p.bb_period) {
+                    paramText = `BB(${p.bb_period}, ${p.bb_std_dev}) | RSI(${p.rsi_period}): [${p.rsi_oversold}/${p.rsi_overbought}]`;
+                  } else if (p.strategy === "macd_volume" || p.macd_fast) {
+                    paramText = `MACD(${p.macd_fast}, ${p.macd_slow}) | Vol: ${p.volume_threshold_ratio}x`;
+                  } else if (p.strategy === "supertrend_atr" || p.supertrend_period) {
+                    paramText = `Supertrend(${p.supertrend_period}, ${p.supertrend_multiplier}x)`;
+                  } else if (p.strategy === "crt_sweep" || p.crt_lookback) {
+                    paramText = `CRT Lookback: ${p.crt_lookback} velas`;
+                  } else if (p.strategy === "po3_trailing") {
+                    paramText = `PO3 Trailing Stop Mode`;
+                  } else {
+                    paramText = `RSI(${p.rsi_period}) [${p.rsi_oversold}/${p.rsi_overbought}] | Vol:${p.volume_ratio}x`;
+                  }
+                  if (p.stop_loss_pct !== undefined) paramText += ` | SL:${p.stop_loss_pct}%`;
+                  if (p.take_profit_pct !== undefined) paramText += ` | TP:${p.take_profit_pct}%`;
+
                   return (
                     <tr key={idx} className="hover:bg-white/5 transition-colors">
                       <td className="py-3 px-3 font-bold text-amber-400">#{idx + 1}</td>
                       <td className="py-3 px-3 font-mono">
-                        <span className="bg-black/60 px-2 py-1 rounded border border-white/5 block text-[10px] text-slate-300">
-                          RSI({p.rsi_period}) [{p.rsi_oversold}/{p.rsi_overbought}] | Vol:{p.volume_ratio}x | SL:
-                          {p.stop_loss_pct}% | TP:{p.take_profit_pct}%
+                        <span className="bg-black/60 px-2 py-1 rounded border border-white/5 block text-[10px] text-amber-200">
+                          {paramText}
                         </span>
                       </td>
                       <td className={`py-3 px-3 font-bold ${(strat.total_pnl_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>

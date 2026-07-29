@@ -163,7 +163,16 @@ REGRAS OBRIGATÓRIAS:
                     confianca=int(parsed.get("confianca", 50)),
                     justificativa=str(parsed.get("justificativa", "Análise gerada pelo modelo Ollama."))
                 )
+        except urllib.error.HTTPError as http_err:
+            rec = self.get_fallback_recommendation(scan_data)
+            if http_err.code == 404:
+                installed_models = self.list_local_models()
+                installed_str = ", ".join(installed_models) if installed_models else "Nenhum modelo baixado"
+                rec.justificativa += f" [Nota: O modelo '{target_model}' não está instalado no Ollama local (HTTP 404). Execute 'ollama pull {target_model}' ou escolha um modelo disponível: {installed_str}. Análise realizada via motor de regras técnicas.]"
+            else:
+                rec.justificativa += f" [Nota: Erro de comunicação Ollama (HTTP {http_err.code}) - usando motor de regras técnicas]"
+            return rec
         except Exception as e:
             rec = self.get_fallback_recommendation(scan_data)
-            rec.justificativa += f" [Nota: Falha no parse do Ollama ({str(e)}) - usando motor de regras]"
+            rec.justificativa += f" [Nota: Falha no Ollama ({str(e)}) - usando motor de regras técnicas]"
             return rec

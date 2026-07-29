@@ -22,6 +22,15 @@ class StrategyOptimizer:
         cmf_periods: Optional[List[int]] = None,
         cmf_thresholds: Optional[List[float]] = None,
         ema_filter_periods: Optional[List[int]] = None,
+        ema_fast_list: Optional[List[int]] = None,
+        ema_slow_list: Optional[List[int]] = None,
+        bb_periods: Optional[List[int]] = None,
+        bb_stds: Optional[List[float]] = None,
+        macd_fasts: Optional[List[int]] = None,
+        macd_slows: Optional[List[int]] = None,
+        st_periods: Optional[List[int]] = None,
+        st_mults: Optional[List[float]] = None,
+        crt_lookbacks: Optional[List[int]] = None,
         stop_losses: Optional[List[float]] = None,
         take_profits: Optional[List[float]] = None,
         use_trailing_stop: bool = False,
@@ -123,15 +132,15 @@ class StrategyOptimizer:
                 )
             ]
         elif strat_mode == "ema_cross":
-            ema_fast_list = [7, 9, 12]
-            ema_slow_list = [21, 26]
+            ema_fast_list = ema_fast_list or [7, 9, 12]
+            ema_slow_list = ema_slow_list or [21, 26]
             param_combinations = [
                 {"strategy": "ema_cross", "ema_fast": p_fast, "ema_slow": p_slow, "stop_loss_pct": p_sl, "take_profit_pct": p_tp}
                 for (p_fast, p_slow, p_sl, p_tp) in itertools.product(ema_fast_list, ema_slow_list, stop_losses, take_profits)
             ]
         elif strat_mode == "bollinger_rsi":
-            bb_periods = [14, 20]
-            bb_stds = [1.8, 2.0]
+            bb_periods = bb_periods or [14, 20]
+            bb_stds = bb_stds or [1.8, 2.0]
             rsi_periods = rsi_periods or [14]
             rsi_oversolds = rsi_oversolds or [25.0, 30.0]
             rsi_overboughts = rsi_overboughts or [70.0, 75.0]
@@ -143,21 +152,21 @@ class StrategyOptimizer:
             ]
         elif strat_mode == "macd_volume":
             volume_ratios = volume_ratios or [1.5, 2.0]
-            macd_fasts = [10, 12]
-            macd_slows = [24, 26]
+            macd_fasts = macd_fasts or [10, 12]
+            macd_slows = macd_slows or [24, 26]
             param_combinations = [
                 {"strategy": "macd_volume", "macd_fast": p_mf, "macd_slow": p_ms, "volume_threshold_ratio": p_vol, "stop_loss_pct": p_sl, "take_profit_pct": p_tp}
                 for (p_mf, p_ms, p_vol, p_sl, p_tp) in itertools.product(macd_fasts, macd_slows, volume_ratios, stop_losses, take_profits)
             ]
         elif strat_mode == "supertrend_atr":
-            st_periods = [7, 10]
-            st_mults = [2.0, 3.0]
+            st_periods = st_periods or [7, 10]
+            st_mults = st_mults or [2.0, 3.0]
             param_combinations = [
                 {"strategy": "supertrend_atr", "supertrend_period": p_stp, "supertrend_multiplier": p_stm, "stop_loss_pct": p_sl, "take_profit_pct": p_tp}
                 for (p_stp, p_stm, p_sl, p_tp) in itertools.product(st_periods, st_mults, stop_losses, take_profits)
             ]
         elif strat_mode == "crt_sweep":
-            crt_lookbacks = [1, 2, 3]
+            crt_lookbacks = crt_lookbacks or [1, 2, 3]
             param_combinations = [
                 {"strategy": "crt_sweep", "crt_lookback": p_crt, "stop_loss_pct": p_sl, "take_profit_pct": p_tp}
                 for (p_crt, p_sl, p_tp) in itertools.product(crt_lookbacks, stop_losses, take_profits)
