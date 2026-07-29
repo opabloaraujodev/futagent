@@ -20,15 +20,51 @@ class OllamaAdvisor:
             return False
 
     def list_local_models(self) -> List[str]:
-        """Lista os modelos Ollama instalados localmente"""
+        """Lista os modelos Ollama instalados localmente com seus tags completos"""
         try:
             req = urllib.request.Request(f"{self.host}/api/tags", method="GET")
             with urllib.request.urlopen(req, timeout=3) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                models = [m.get("name", "").split(":")[0] for m in data.get("models", [])]
+                models = [m.get("name") or m.get("model", "") for m in data.get("models", []) if m.get("name") or m.get("model")]
                 return sorted(list(set(models)))
         except Exception:
             return []
+
+    def resolve_model_name(self, requested_model: str) -> str:
+        """
+        Resolve o nome do modelo para corresponder exatamente ao tag instalado no Ollama local.
+        Exemplo: 'minimax-m2.5' -> 'minimax-m2.5:cloud'
+        """
+        if not requested_model:
+            return self.model
+
+        installed = self.list_local_models()
+        if not installed:
+            return requested_model
+
+        # 1. Correspondência exata
+        if requested_model in installed:
+            return requested_model
+
+        # 2. Adicionar :latest
+        if f"{requested_model}:latest" in installed:
+            return f"{requested_model}:latest"
+
+        # 3. Procurar por prefixo do tag (ex: minimax-m2.5 -> minimax-m2.5:cloud)
+        req_lower = requested_model.lower()
+        for m in installed:
+            if m.lower().startswith(f"{req_lower}:"):
+                return m
+
+        # 4. Procurar por nome base sem tag (ex: minimax-m2.5:latest -> minimax-m2.5:cloud)
+        base_req = req_lower.split(":")[0]
+        for m in installed:
+            base_installed = m.lower().split(":")[0]
+            if base_req == base_installed:
+                return m
+
+        # 5. Se nenhum correspondeu exatamente, usa o primeiro modelo instalado disponível
+        return installed[0]
 
     def get_fallback_recommendation(self, scan_data: Dict[str, Any]) -> Recommendation:
         """Gera recomendação determinística por regras técnicas quando Ollama estiver indisponível"""
@@ -97,7 +133,8 @@ class OllamaAdvisor:
 
     def analyze(self, scan_data: Dict[str, Any], model_override: str = "") -> Recommendation:
         """Envia os dados do contrato para o modelo Ollama e retorna a recomendação estruturada em JSON"""
-        target_model = model_override or self.model
+        requested = model_override or self.model
+        target_model = self.resolve_model_name(requested)
 
         if not self.is_available():
             rec = self.get_fallback_recommendation(scan_data)
